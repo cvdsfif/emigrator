@@ -20,7 +20,7 @@ describe("Testing migration on a real PostgreSQL database instance", () => {
         await runner.initialiseMigrationTable();
     });
 
-    // Promer rollback is actually not implemented, so we do manual cleanup
+    // Rollback is actually not implemented, so we do manual cleanup
     afterEach(async () => {
         await connectedInterface.query(`DROP TABLE IF EXISTS ${PostgresRunner.MIGRATION_TABLE}`);
         await connectedInterface.query(`DROP TABLE IF EXISTS ${TEST_TABLE}`);
