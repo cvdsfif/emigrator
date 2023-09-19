@@ -2,9 +2,14 @@ import { PostgreSqlContainer, StartedPostgreSqlContainer } from "@testcontainers
 import { Client } from "pg";
 import { IQueryInterface } from "./migration-interfaces";
 
+export interface IConnectedTestInterface extends IQueryInterface {
+    disconnect(): void;
+    expectTableExists(tableName: string): void;
+}
+
 // This class has to be a singleton, we'll not initialize two instances of database for tests :)
-export default class PostgresTestInterface implements IQueryInterface {
-    private static connectedInstance: PostgresTestInterface | null = null;
+class PostgresTester implements IConnectedTestInterface {
+    private static connectedInstance: PostgresTester | null = null;
 
     private postgresContainer: StartedPostgreSqlContainer;
     private connectedClient: Client;
@@ -14,20 +19,20 @@ export default class PostgresTestInterface implements IQueryInterface {
         this.connectedClient = connectedClient;
     }
 
-    static async getConnectedInstance(): Promise<PostgresTestInterface> {
+    static async getConnectedInstance(): Promise<IConnectedTestInterface> {
         if (!this.connectedInstance) {
             const postgresContainer = await new PostgreSqlContainer().start();
             const connectedClient = new Client({ connectionString: postgresContainer.getConnectionUri() });
             await connectedClient.connect();
-            this.connectedInstance = new PostgresTestInterface(postgresContainer, connectedClient);
+            this.connectedInstance = new PostgresTester(postgresContainer, connectedClient);
         }
         return this.connectedInstance!;
     }
 
     async disconnect() {
-        await PostgresTestInterface.connectedInstance?.connectedClient.end();
-        await PostgresTestInterface.connectedInstance?.postgresContainer.stop();
-        PostgresTestInterface.connectedInstance = null;
+        await PostgresTester.connectedInstance?.connectedClient.end();
+        await PostgresTester.connectedInstance?.postgresContainer.stop();
+        PostgresTester.connectedInstance = null;
     }
 
     private convertNamedParamerersToNumbered = (query: string, paramsObject?: any): [string, any[]] => {
@@ -49,3 +54,5 @@ export default class PostgresTestInterface implements IQueryInterface {
         expect((await this.query(`SELECT 'public.${tableName}'::regclass AS tab`)).records[0].tab).toBe(tableName);
     }
 }
+
+export const getConnectedPostgresInterface = async (): Promise<IConnectedTestInterface> => await PostgresTester.getConnectedInstance();

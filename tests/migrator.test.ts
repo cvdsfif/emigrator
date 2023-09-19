@@ -45,7 +45,7 @@ describe("The abstract migrator should run against test stub", () => {
         expect(createEmigrator()).toBeDefined());
 
     test('Empty migration should have zero as last in order', () =>
-        expect(createEmigrator().lastMigration()).toEqual(0));
+        expect(createEmigrator().lastMigration()).toEqual("0.0"));
 
     test('Migration should not accept non-positive orders', () =>
         expect(() => createEmigrator().migration({ order: 0, query: "", description: "" })).toThrowError());
@@ -62,7 +62,15 @@ describe("The abstract migrator should run against test stub", () => {
             .migration(migration1)
             .migration(migration3)
             .migration(migration11);
-        expect(instance.lastMigration()).toEqual(11);
+        expect(instance.lastMigration()).toEqual("11.0");
+    });
+
+    test('Migration counts deltas correctly and report versioned deltas', () => {
+        const instance = createEmigrator()
+            .migration(migration1)
+            .migration(migration3)
+            .migration({ ...migration11, version: 1 });
+        expect(instance.lastMigration()).toEqual("11.1");
     });
 
     test('All the expected migrations are called', async () => {

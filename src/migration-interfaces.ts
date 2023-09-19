@@ -1,10 +1,10 @@
 import { CdkCustomResourceEvent, CdkCustomResourceResponse } from "aws-lambda";
-import { Migrator } from "./migrator";
 
 export interface Migration {
     order: number;
     description: string;
     query: string;
+    version?: number;
 }
 
 export interface IQueryInterface {
@@ -23,20 +23,29 @@ export interface MigrationError {
 }
 
 export interface IMigrator {
-    migrate(runner: MigrationRunner): Promise<MigrationResult>;
-    migration(migration: Migration): Migrator;
-    lastMigration(): number;
+    migrate(runner: IMigrationRunner): Promise<MigrationResult>;
+    migration(migration: Migration): IMigrator;
+    lastMigration(): string;
 }
 
 export interface ICdkMigratorHandler {
     handle(
         migrator: IMigrator,
-        runner: MigrationRunner,
+        runner: IMigrationRunner,
         event: CdkCustomResourceEvent
     ): Promise<CdkCustomResourceResponse>;
 }
 
-export abstract class MigrationRunner {
+export interface IMigrationRunner {
+    getFirstToMigrate(): Promise<number>;
+    run(inc: Migration): Promise<MigrationResult>;
+    migrationFailed(error: MigrationError): Promise<void>;
+    migrationSuccessful(migration: Migration, duration: number): Promise<void>;
+    initialiseMigrationTable(): Promise<void>;
+    cleanupFailedMigrationsReports(): Promise<void>;
+}
+
+export abstract class MigrationRunner implements IMigrationRunner {
     protected db: IQueryInterface;
 
     constructor(db: IQueryInterface) {

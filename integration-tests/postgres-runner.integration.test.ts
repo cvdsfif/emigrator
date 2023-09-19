@@ -1,17 +1,17 @@
 import { createEmigrator, createPostgresRunner } from "../src";
-import { IMigrator, MigrationRunner } from "../src/migration-interfaces";
+import { IMigrationRunner } from "../src/migration-interfaces";
 import PostgresRunner from "../src/postgres-runner";
-import PostgresTestInterface from "../src/postgres-test-interface";
+import { getConnectedPostgresInterface, IConnectedTestInterface } from "../src/postgres-test-interface";
 
 describe("Testing migration on a real PostgreSQL database instance", () => {
     jest.setTimeout(60000);
 
-    let connectedInterface: PostgresTestInterface;
-    let runner: MigrationRunner;
+    let connectedInterface: IConnectedTestInterface;
+    let runner: IMigrationRunner;
 
     const TEST_TABLE = "test_table";
 
-    beforeAll(async () => connectedInterface = await PostgresTestInterface.getConnectedInstance());
+    beforeAll(async () => connectedInterface = await getConnectedPostgresInterface());
 
     afterAll(async () => await connectedInterface.disconnect());
 

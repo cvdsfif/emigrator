@@ -1,9 +1,9 @@
-import { IMigrator, Migration, MigrationResult, MigrationRunner } from "./migration-interfaces";
+import { IMigrationRunner, IMigrator, Migration, MigrationResult } from "./migration-interfaces";
 
 export class Migrator implements IMigrator {
     private migrations = new Array<Migration>();
 
-    async migrate(runner: MigrationRunner): Promise<MigrationResult> {
+    async migrate(runner: IMigrationRunner): Promise<MigrationResult> {
         let counter = 0;
         let allSuccessful = true;
 
@@ -42,7 +42,8 @@ export class Migrator implements IMigrator {
         return this;
     }
 
-    lastMigration(): number {
-        return this.migrations[this.migrations.length - 1]?.order ?? 0;
+    lastMigration(): string {
+        const lastMigration = this.migrations[this.migrations.length - 1];
+        return `${lastMigration?.order ?? 0}.${lastMigration?.version ?? 0}`;
     }
 }

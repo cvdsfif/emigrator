@@ -9,7 +9,7 @@ describe("Testing the custom CDK DB migration resource handler", () => {
         migration(migration: Migration): Migrator {
             throw new Error("Method not implemented.");
         }
-        lastMigration(): number {
+        lastMigration(): string {
             throw new Error("Method not implemented.");
         }
     }
