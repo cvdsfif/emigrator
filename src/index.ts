@@ -9,3 +9,5 @@ export const createEmigrator = (): IMigrator => {
 export const createPostgresRunner = (db: IQueryInterface) => {
     return new PostgresRunner(db);
 }
+
+export { IMigrator, IQueryInterface }

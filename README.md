@@ -30,6 +30,7 @@ npm i aws-cdk-lib --prefix migration-layer/aws-cdk-lib/nodejs
 npm i constructs --prefix migration-layer/constructs/nodejs
 npm i data-api-client --prefix migration-layer/data-api-client/nodejs
 npm i aws-sdk --prefix migration-layer/aws-sdk/nodejs
+npm i emigrator --prefix migration-layer/emigrator/nodejs
 ```
 
 ## API reference
