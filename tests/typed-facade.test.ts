@@ -160,4 +160,24 @@ describe("Testing typed query fadace conversions", () => {
         expect(record.nullishBool).toBeNull();
         expect(record.falsishBool).toBe(false);
     });
+
+    test("Should translate query with two insert values", async () => {
+        const records = [
+            { id: 1, someValue: "txt" },
+            { id: 2, someValue: "pwd" }
+        ];
+        const TABLE_NAME = "test_tab";
+        await typedFacade(dbMock).multiInsert(TABLE_NAME, records);
+        expect(dbMock.query).toBeCalledWith(
+            `INSERT INTO ${TABLE_NAME}(id,some_value) VALUES(:id_0,:someValue_0),(:id_1,:someValue_1)`,
+            { id_0: 1, someValue_0: "txt", id_1: 2, someValue_1: "pwd" }
+        )
+    });
+
+    test("Should never call subsequent queries if the arguments list is empty", async () => {
+        const records: any[] = [];
+        const TABLE_NAME = "test_tab";
+        await typedFacade(dbMock).multiInsert(TABLE_NAME, records);
+        expect(dbMock.query).not.toBeCalled();
+    })
 })

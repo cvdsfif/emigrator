@@ -7,8 +7,6 @@ describe("Testing integrity of the test runner", () => {
     jest.setTimeout(60000);
 
     let connectedInterface: IConnectedTestInterface;
-    let runner: IMigrationRunner;
-
     const TEST_TABLE = "test_table";
 
     beforeAll(async () => connectedInterface = await getConnectedPostgresInterface());
@@ -16,7 +14,7 @@ describe("Testing integrity of the test runner", () => {
     afterAll(async () => await connectedInterface.disconnect());
 
     beforeEach(async () => {
-        runner = createPostgresRunner(connectedInterface);
+        const runner: IMigrationRunner = createPostgresRunner(connectedInterface);
         await runner.initialiseMigrationTable();
         await createEmigrator()
             .migration({

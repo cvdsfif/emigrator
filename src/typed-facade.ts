@@ -33,6 +33,7 @@ export type DbRecord<T> = {
 export interface ITypedFacade extends IQueryInterface {
     query(request: string, queryObject?: any): Promise<{ records: any[]; }>;
     typedQuery<T extends Object>(c: new () => T, request: string, queryObject?: any): Promise<{ records: DbRecord<T>[]; }>;
+    multiInsert<T>(tableName: string, records: T[]): Promise<T[]>;
 }
 
 class TypedFacade implements ITypedFacade {
@@ -41,6 +42,8 @@ class TypedFacade implements ITypedFacade {
     constructor(db: IQueryInterface) {
         this.db = db;
     }
+
+    private convertUppercaseIntoUnderscored = (s: String) => s.replace(/[A-Z]/g, match => `_${match.toLowerCase()}`);
 
     async typedQuery<T extends Object>(c: new () => T, request: string, queryObject?: any): Promise<{ records: DbRecord<T>[]; }> {
         return {
@@ -53,7 +56,7 @@ class TypedFacade implements ITypedFacade {
                         const matchingField =
                             record[key] ??
                             record[key.toLowerCase()] ??
-                            record[key.replace(/[A-Z]/g, match => `_${match.toLowerCase()}`)];
+                            record[this.convertUppercaseIntoUnderscored(key)];
                         if (field instanceof DataField && !matchingField && matchingField !== false && matchingField !== 0) {
                             if (field.defaultIfNull() instanceof NotNull) throw new Error(`Null value is not allowed for the field ${key}`);
                             (newRecord as any)[key] = field.defaultIfNull();
@@ -73,6 +76,35 @@ class TypedFacade implements ITypedFacade {
 
     async query(request: string, queryObject?: any): Promise<{ records: any[]; }> {
         return await this.db.query(request, queryObject);
+    }
+
+    private expandTableFields(field: any): string {
+        return Object.keys(field).map(key => this.convertUppercaseIntoUnderscored(key)).join(',');
+    }
+
+    private indexedRecordExpansion = (record: any, index: number) => {
+        const fillTarget = {};
+        Object.keys(record).forEach(key => (fillTarget as any)[`${key}_${index}`] = (record as any)[key]);
+        return fillTarget;
+    }
+
+    private expandedValuesList = (transactions: any[]) =>
+        transactions.reduce((accumulator, record, index) =>
+            ({ ...accumulator, ...this.indexedRecordExpansion(record, index) })
+            , {})
+
+    private translateTransactionFieldsIntoIndexedArguments = (record: any, index: number) =>
+        Object.keys(record).map(key => `:${key}_${index}`).join(",");
+
+    private expandedArgumentsList = (records: any) =>
+        records.map((record: any, index: number) => `(${this.translateTransactionFieldsIntoIndexedArguments(record, index)})`).join(",");
+
+    async multiInsert<T>(tableName: string, records: T[]): Promise<T[]> {
+        if (records.length > 0)
+            await this.db.query(
+                `INSERT INTO ${tableName}(${this.expandTableFields(records[0])}) VALUES${this.expandedArgumentsList(records)}`,
+                this.expandedValuesList(records));
+        return records;
     }
 }
 
