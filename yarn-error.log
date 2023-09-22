@@ -1,5 +1,5 @@
 Arguments: 
-  /Users/nikitzykov/.nvm/versions/node/v20.5.1/bin/node /Users/nikitzykov/.nvm/versions/node/v20.5.1/bin/yarn publish --tag beta
+  /Users/nikitzykov/.nvm/versions/node/v20.5.1/bin/node /Users/nikitzykov/.nvm/versions/node/v20.5.1/bin/yarn publish
 
 PATH: 
   /usr/local/sbin:/Users/nikitzykov/.nvm/versions/node/v20.5.1/bin:/Users/nikitzykov/.rbenv/shims:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin:/Library/Apple/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/Users/nikitzykov/.rvm/bin:/usr/local/mysql/bin/:/Users/nikitzykov/.rvm/bin
@@ -29,7 +29,7 @@ Trace:
 npm manifest: 
   {
     "name": "emigrator-ts",
-    "version": "1.0.0-beta.11",
+    "version": "1.2.1",
     "description": "Extendable database migration library adapted to CDK projects written in TypeScript",
     "main": "./dist/index.js",
     "module": "./dist/index.mjs",

@@ -27,7 +27,7 @@ class BooleanField extends DataField<boolean>{ };
 export const booleanField = (defaultIfNull: boolean | null | NotNull | (() => boolean) = null) => new BooleanField(defaultIfNull);
 
 export type DbRecord<T> = {
-    [P in keyof T]: FieldType<T[P]> | null;
+    [P in keyof T]?: FieldType<T[P]> | null;
 }
 
 export interface ITypedFacade extends IQueryInterface {
@@ -62,7 +62,8 @@ class TypedFacade implements ITypedFacade {
                             (newRecord as any)[key] = field.defaultIfNull();
                         }
                         else if (field instanceof IntegerField) (newRecord as any)[key] = parseInt(matchingField);
-                        else if (field instanceof BigIntField) (newRecord as any)[key] = BigInt(matchingField);
+                        else if (field instanceof BigIntField)
+                            (newRecord as any)[key] = BigInt(`${matchingField}`.replace(/(^-?\d+)(.*)/, "$1"));
                         else if (field instanceof FloatField) (newRecord as any)[key] = parseFloat(matchingField);
                         else if (field instanceof StringField) (newRecord as any)[key] = `${matchingField}`;
                         else if (field instanceof DateField) (newRecord as any)[key] = new Date(matchingField);

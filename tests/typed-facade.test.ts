@@ -180,4 +180,14 @@ describe("Testing typed query fadace conversions", () => {
         await typedFacade(dbMock).multiInsert(TABLE_NAME, records);
         expect(dbMock.query).not.toBeCalled();
     })
+
+    test("Nullable input values should produce nullable fields in the target interface", () => {
+        class TestInput {
+            id = integerField();
+            str = stringField(notNull);
+        };
+        type TestClass = DbRecord<TestInput>;
+        const val: TestClass = { str: "15" };
+        expect(val.id).toBeUndefined();
+    });
 })
