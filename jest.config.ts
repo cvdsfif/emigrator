@@ -7,5 +7,6 @@ module.exports = {
         '^.+\\.tsx?$': 'ts-jest'
     },
     verbose: true,
-    collectCoverage: true
+    collectCoverage: true,
+    collectCoverageFrom: ['!integration-test/*', '!test/*', '!dev-test/*', 'index.ts']
 };

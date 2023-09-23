@@ -34,6 +34,7 @@ export interface ITypedFacade extends IQueryInterface {
     query(request: string, queryObject?: any): Promise<{ records: any[]; }>;
     typedQuery<T extends Object>(c: new () => T, request: string, queryObject?: any): Promise<{ records: DbRecord<T>[]; }>;
     multiInsert<T>(tableName: string, records: T[]): Promise<T[]>;
+    select<T extends Object>(c: new () => T, tableQuery: string, queryObject?: any): Promise<DbRecord<T>[]>;
 }
 
 class TypedFacade implements ITypedFacade {
@@ -101,11 +102,31 @@ class TypedFacade implements ITypedFacade {
         records.map((record: any, index: number) => `(${this.translateTransactionFieldsIntoIndexedArguments(record, index)})`).join(",");
 
     async multiInsert<T>(tableName: string, records: T[]): Promise<T[]> {
-        if (records.length > 0)
-            await this.db.query(
-                `INSERT INTO ${tableName}(${this.expandTableFields(records[0])}) VALUES${this.expandedArgumentsList(records)}`,
-                this.expandedValuesList(records));
+        if (records.length > 0) {
+            let query: string;
+            let values: any;
+            try {
+                query = `INSERT INTO ${tableName}(${this.expandTableFields(records[0])}) VALUES${this.expandedArgumentsList(records)}`
+                values = this.expandedValuesList(records);
+                await this.db.query(query, values);
+            } catch (err: any) {
+                throw new Error(`
+                    Error for the executed insert query:
+                    ${query!},
+                    values: ${JSON.stringify(values, null, 3)}
+                    Original error:${err.message},
+                    Error stack:${err.stack}
+                    `);
+            }
+        }
         return records;
+    }
+
+    async select<T extends Object>(c: new () => T, tableQuery: string, queryObject?: any): Promise<DbRecord<T>[]> {
+        const fieldExample: T = new c();
+        return (await this.typedQuery<T>(c,
+            `SELECT ${this.expandTableFields(fieldExample)} FROM ${tableQuery}`, queryObject
+        )).records
     }
 }
 

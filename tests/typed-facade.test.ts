@@ -1,5 +1,6 @@
-import { IQueryInterface } from "../src";
+import { DatabaseChange, IQueryInterface } from "../src";
 import { DbRecord, bigIntField, booleanField, dateField, floatField, integerField, notNull, stringField, typedFacade } from "../src/typed-facade";
+import { extendExpectWithContainString } from "./expect-string-containing";
 
 describe("Testing typed query fadace conversions", () => {
     class QueryInterfaceMock implements IQueryInterface { query = jest.fn(); }
@@ -7,6 +8,8 @@ describe("Testing typed query fadace conversions", () => {
     let dbMock: QueryInterfaceMock;
 
     beforeEach(() => dbMock = new QueryInterfaceMock());
+
+    extendExpectWithContainString();
 
     class DatabaseChangeInput {
         creationOrder = integerField(5);
@@ -189,5 +192,46 @@ describe("Testing typed query fadace conversions", () => {
         type TestClass = DbRecord<TestInput>;
         const val: TestClass = { str: "15" };
         expect(val.id).toBeUndefined();
+    });
+
+    test("Select all with fields autofill should pass", async () => {
+        const intValue = 5;
+        const floatValue = 5.5;
+        const bigIntValue = 100n;
+        const stringValue = "str";
+        const dateValue = new Date("1974-03-02");
+        const input: DatabaseChangeRecord = {
+            creationOrder: intValue,
+            nullableInt: 0,
+            somethingFloat: floatValue,
+            somethingBig: bigIntValue,
+            nullableBig: 0n,
+            ecriture: stringValue,
+            unJour: dateValue,
+            intNotNull: 0,
+            calculatedNotNullableDefault: "str",
+            veritas: true
+        };
+        dbMock.query.mockReturnValue({ records: [input] });
+        const retval = (await typedFacade(dbMock).select(DatabaseChangeInput, "storage_table WHERE int_value > 0", {}))[0];
+        expect(dbMock.query).toBeCalledWith(
+            "SELECT creation_order,int_not_null,nullable_int,something_float,something_big,nullable_big,ecriture,un_jour,veritas,incorrect,more_incorrect,calculated,explicitly_nullable_int,string_with_default,calculated_nullable_default,calculated_not_nullable_default,falsish_bool,nullish_bool FROM storage_table WHERE int_value > 0",
+            {});
+        expect(retval.creationOrder).toEqual(intValue);
+    });
+
+    test("Error in multiinsert should throw an informative error", async () => {
+        const records = [
+            { id: 1, someValue: "txt" },
+            { id: 2, someValue: "pwd" }
+        ];
+        const TABLE_NAME = "test_tab";
+        dbMock.query.mockImplementation(() => { throw new Error("Gluks"); });
+        try {
+            await typedFacade(dbMock).multiInsert(TABLE_NAME, records);
+            fail("Should never get here");
+        } catch (err) {
+            expect(err).toContainString("insert query");
+        }
     });
 })
