@@ -1,6 +1,6 @@
 {
   "name": "emigrator-ts",
-  "version": "1.6.15",
+  "version": "1.6.16",
   "description": "Extendable database migration library adapted to CDK projects written in TypeScript",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -36,7 +36,7 @@
     "url": "https://github.com/cvdsfif/emigrator/issues"
   },
   "homepage": "https://github.com/cvdsfif/emigrator#readme",
-  "dependencies": {
+  "devDependencies": {
     "@testcontainers/postgresql": "^10.2.1",
     "@types/aws-lambda": "^8.10.121",
     "@types/jest": "^29.5.4",
