@@ -1,18 +1,20 @@
 {
   "name": "emigrator-ts",
-  "version": "1.6.18",
+  "version": "1.6.19",
   "description": "Extendable database migration library adapted to CDK projects written in TypeScript",
   "main": "./dist/index.js",
   "exports": {
     ".": {
       "require": "./dist/index.js",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "module": "./dist/index.mjs"
     },
     "./test": {
       "require": "./dist/test.js",
       "import": "./dist/test.js",
-      "types": "./dist/test.d.ts"
+      "types": "./dist/test.d.ts",
+      "module": "./dist/test.mjs"
     }
   },
   "files": [
