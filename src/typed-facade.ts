@@ -33,7 +33,7 @@ export type DbRecord<T> = {
 export interface ITypedFacade extends IQueryInterface {
     query(request: string, queryObject?: any): Promise<{ records: any[]; }>;
     typedQuery<T extends Object>(c: new () => T, request: string, queryObject?: any): Promise<{ records: DbRecord<T>[]; }>;
-    multiInsert<T>(tableName: string, records: T[]): Promise<T[]>;
+    multiInsert<T extends Object>(c: new () => T, tableName: string, records: DbRecord<T>[]): Promise<DbRecord<T>[]>;
     select<T extends Object>(c: new () => T, tableQuery: string, queryObject?: any): Promise<DbRecord<T>[]>;
 }
 
@@ -80,46 +80,61 @@ class TypedFacade implements ITypedFacade {
         return await this.db.query(request, queryObject);
     }
 
-    private expandTableFields(field: any): string {
-        return Object.keys(field).map(key => this.convertUppercaseIntoUnderscored(key)).join(',');
+    private expandTableFields(template: any): string {
+        return Object.keys(template).map(key => this.convertUppercaseIntoUnderscored(key)).join(',');
     }
 
-    private indexedRecordExpansion = (record: any, index: number) => {
+    private indexedRecordExpansion = (record: any, index: number, template: any) => {
         const fillTarget = {};
-        Object.keys(record).forEach(key => (fillTarget as any)[`${key}_${index}`] = (record as any)[key]);
+        Object.keys(record).forEach(key => (fillTarget as any)[`${key}_${index}`] = record[key]);
         return fillTarget;
     }
 
-    private expandedValuesList = (transactions: any[]) =>
+    private expandedValuesList = (transactions: any[], template: any) =>
         transactions.reduce((accumulator, record, index) =>
-            ({ ...accumulator, ...this.indexedRecordExpansion(record, index) })
+            ({ ...accumulator, ...this.indexedRecordExpansion(record, index, template) })
             , {})
 
-    private translateTransactionFieldsIntoIndexedArguments = (record: any, index: number) =>
-        Object.keys(record).map(key => `:${key}_${index}`).join(",");
+    private translateTransactionFieldsIntoIndexedArguments = (record: any, index: number, template: any) =>
+        Object.keys(template).map(key => `:${key}_${index}`).join(",");
 
-    private expandedArgumentsList = (records: any) =>
-        records.map((record: any, index: number) => `(${this.translateTransactionFieldsIntoIndexedArguments(record, index)})`).join(",");
+    private expandedArgumentsList = (records: any, template: any) =>
+        records.map((record: any, index: number) =>
+            `(${this.translateTransactionFieldsIntoIndexedArguments(record, index, template)})`)
+            .join(",");
 
-    async multiInsert<T>(tableName: string, records: T[]): Promise<T[]> {
-        if (records.length > 0) {
-            let query: string;
-            let values: any;
-            try {
-                query = `INSERT INTO ${tableName}(${this.expandTableFields(records[0])}) VALUES${this.expandedArgumentsList(records)}`
-                values = this.expandedValuesList(records);
-                await this.db.query(query, values);
-            } catch (err: any) {
-                throw new Error(`
+    private recordTypesMatchTemplate = <T>(record: DbRecord<T>, template: T): DbRecord<T> =>
+        Object.keys(template as any).reduce((accumulator, field) => {
+            const value = (record as any)[field];
+            (accumulator as any)[field] =
+                (value && ((template as any)[field] instanceof DateField)) ? new Date(value) :
+                    value;
+            return accumulator;
+        }, {});
+
+    private recordsMatchTemplate = <T>(records: DbRecord<T>[], template: T): DbRecord<T>[] =>
+        records.map(record => this.recordTypesMatchTemplate(record, template));
+
+    async multiInsert<T extends Object>(c: new () => T, tableName: string, records: DbRecord<T>[]): Promise<DbRecord<T>[]> {
+        if (records.length == 0) return [];
+        let query: string;
+        let values: any;
+        const template = new c();
+        try {
+            const matchedRecords = this.recordsMatchTemplate(records, template);
+            query = `INSERT INTO ${tableName}(${this.expandTableFields(template)}) VALUES${this.expandedArgumentsList(records, template)}`
+            values = this.expandedValuesList(matchedRecords, template);
+            await this.db.query(query, values);
+            return matchedRecords;
+        } catch (err: any) {
+            throw new Error(`
                     Error for the executed insert query:
                     ${query!},
                     values: ${JSON.stringify(values, null, 3)}
                     Original error:${err.message},
                     Error stack:${err.stack}
                     `);
-            }
         }
-        return records;
     }
 
     async select<T extends Object>(c: new () => T, tableQuery: string, queryObject?: any): Promise<DbRecord<T>[]> {

@@ -1,5 +1,6 @@
-import { DbRecord, IConnectedTestInterface, IMigrationRunner, ITypedFacade, bigIntField, createEmigrator, createPostgresRunner, dateField, getConnectedPostgresInterface, integerField, notNull, stringField, typedFacade } from "../src";
+import { DbRecord, IMigrationRunner, ITypedFacade, bigIntField, booleanField, createEmigrator, createPostgresRunner, dateField, integerField, notNull, stringField, typedFacade } from "../src";
 import PostgresRunner from "../src/postgres-runner";
+import { IConnectedTestInterface, getConnectedPostgresInterface } from "../src/postgres-test-interface";
 
 describe("Testing database-related features of typed facade", () => {
     jest.setTimeout(60000);
@@ -23,7 +24,8 @@ describe("Testing database-related features of typed facade", () => {
             .migration({
                 order: 1,
                 query: `CREATE TABLE ${TEST_TABLE}
-                    (id BIGINT, some_value VARCHAR, num_field Numeric(16,2), int_field Numeric(16,2), date_field TIMESTAMPTZ)`,
+                    (id BIGINT, some_value VARCHAR, num_field Numeric(16,2), 
+                    int_field Numeric(16,2), date_field TIMESTAMPTZ, is_cool BOOLEAN DEFAULT TRUE)`,
                 description: "Test table created"
             })
             .migrate(runner);
@@ -35,6 +37,7 @@ describe("Testing database-related features of typed facade", () => {
         numField = bigIntField();
         intField = integerField();
         dateField = dateField();
+        isCool = booleanField();
     };
 
     // Rollback is actually not implemented, so we do manual cleanup
@@ -45,10 +48,10 @@ describe("Testing database-related features of typed facade", () => {
 
     test("Should correctly proceed to multiple inserts", async () => {
         const records = [
-            { id: 1, someValue: "txt" },
-            { id: 2, someValue: "pwd" }
+            { id: 1n, someValue: "txt" },
+            { id: 2n, someValue: "pwd" }
         ];
-        await facade.multiInsert(TEST_TABLE, records);
+        await facade.multiInsert(Input, TEST_TABLE, records);
         const results = await facade.typedQuery(Input, `SELECT id,some_value from ${TEST_TABLE}`);
         expect(results.records[0].id).toEqual(1n);
         expect(results.records[1].id).toEqual(2n);
@@ -58,9 +61,9 @@ describe("Testing database-related features of typed facade", () => {
 
     test("Should correctly insert and retake bigints", async () => {
         const hugeValue = 1000000000000000n;
-        const stopizot = 100500;
+        const stopizot = 100500n;
         const record = [{ id: hugeValue, someValue: "gig", numField: stopizot }];
-        await facade.multiInsert(TEST_TABLE, record);
+        await facade.multiInsert(Input, TEST_TABLE, record);
         const results = (await facade.typedQuery(Input, `SELECT id,num_field from ${TEST_TABLE}`)).records;
         expect(results[0].id).toEqual(hugeValue);
         expect(results[0].numField).toEqual(BigInt(stopizot));
@@ -68,9 +71,9 @@ describe("Testing database-related features of typed facade", () => {
 
     test("Should correctly insert and retake integers", async () => {
         const hugeValue = 1000000000000000n;
-        const stopizot = 100500;
+        const stopizot = 100500n;
         const record = [{ id: hugeValue, someValue: "gig", numField: stopizot }];
-        await facade.multiInsert(TEST_TABLE, record);
+        await facade.multiInsert(Input, TEST_TABLE, record);
         const results = (await facade.typedQuery(Input, `SELECT id,num_field from ${TEST_TABLE}`)).records;
         expect(results[0].id).toEqual(hugeValue);
         expect(results[0].numField).toEqual(BigInt(stopizot));
@@ -80,7 +83,7 @@ describe("Testing database-related features of typed facade", () => {
         const hugeValue = 1000000000000000n;
         const ifi = 500;
         const record = [{ id: hugeValue, someValue: "gig", intField: ifi }];
-        await facade.multiInsert(TEST_TABLE, record);
+        await facade.multiInsert(Input, TEST_TABLE, record);
         const results = (await facade.typedQuery(Input, `SELECT id,int_field from ${TEST_TABLE}`)).records;
         expect(results[0].intField).toEqual(ifi);
     });
@@ -88,28 +91,37 @@ describe("Testing database-related features of typed facade", () => {
     test("Should correctly treat null values", async () => {
         const hugeValue = 1000000000000000n;
         const record = [{ id: hugeValue, someValue: "gig" }];
-        await facade.multiInsert(TEST_TABLE, record);
+        await facade.multiInsert(Input, TEST_TABLE, record);
         const results = (await facade.typedQuery(Input, `SELECT id,int_field from ${TEST_TABLE}`)).records;
         expect(results[0].intField).toBeNull();
     });
 
     test("Select should execute a sane query", async () => {
         const hugeValue = 1000000000000000n;
-        const stopizot = 100500;
+        const stopizot = 100500n;
         const record = [{ id: hugeValue, someValue: "gig", numField: stopizot }];
-        await facade.multiInsert(TEST_TABLE, record);
+        await facade.multiInsert(Input, TEST_TABLE, record);
         const results = (await facade.select(Input, TEST_TABLE));
         expect(results[0].id).toEqual(hugeValue);
         expect(results[0].numField).toEqual(BigInt(stopizot));
     });
 
-    test("Should correctly accept time fields", async () => {
+    test("Should correctly accept date fields", async () => {
         const hugeValue = 1000000000000000n;
-        const stopizot = 100500;
-        const datushka = "1990-03-11T04:20:35Z";
+        const stopizot = 100500n;
+        const datushka = new Date("1990-03-11T04:20:35Z");
         const record = [{ id: hugeValue, someValue: "gig", numField: stopizot, dateField: datushka }];
-        await facade.multiInsert(TEST_TABLE, record);
+        await facade.multiInsert(Input, TEST_TABLE, record);
         const results = (await facade.select(Input, TEST_TABLE));
         expect(results[0].dateField).toEqual(new Date(datushka));
+    });
+
+    test("Should correctly false booleans when default is true", async () => {
+        const hugeValue = 1000000000000000n;
+        const stopizot = 100500n;
+        const record = [{ id: hugeValue, someValue: "gig", numField: stopizot, isCool: false }];
+        await facade.multiInsert(Input, TEST_TABLE, record);
+        const results = (await facade.select(Input, TEST_TABLE));
+        expect(results[0].isCool).toBeFalsy();
     });
 })

@@ -1,4 +1,4 @@
-import { getConnectedPostgresInterface } from "../src";
+import { getConnectedPostgresInterface } from "../src/postgres-test-interface";
 
 describe("Testing integrity of the test runner", () => {
     jest.setTimeout(60000);

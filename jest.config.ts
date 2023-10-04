@@ -8,5 +8,5 @@ module.exports = {
     },
     verbose: true,
     collectCoverage: true,
-    collectCoverageFrom: ['!integration-test/*', '!test/*', '!dev-test/*', 'index.ts']
+    collectCoverageFrom: ['!integration-test/*', '!tests/*', '!dev-test/*', '!**/index.ts', '!**/migrated-database-construct.ts']
 };

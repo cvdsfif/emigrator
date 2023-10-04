@@ -1,3 +1,4 @@
+import { DatabaseError } from "pg";
 import { DatabaseChange, IQueryInterface } from "../src";
 import { DbRecord, bigIntField, booleanField, dateField, floatField, integerField, notNull, stringField, typedFacade } from "../src/typed-facade";
 import { extendExpectWithContainString } from "./expect-string-containing";
@@ -165,12 +166,16 @@ describe("Testing typed query fadace conversions", () => {
     });
 
     test("Should translate query with two insert values", async () => {
+        class DbEntries {
+            id = integerField();
+            someValue = stringField();
+        }
         const records = [
             { id: 1, someValue: "txt" },
             { id: 2, someValue: "pwd" }
         ];
         const TABLE_NAME = "test_tab";
-        await typedFacade(dbMock).multiInsert(TABLE_NAME, records);
+        await typedFacade(dbMock).multiInsert(DbEntries, TABLE_NAME, records);
         expect(dbMock.query).toBeCalledWith(
             `INSERT INTO ${TABLE_NAME}(id,some_value) VALUES(:id_0,:someValue_0),(:id_1,:someValue_1)`,
             { id_0: 1, someValue_0: "txt", id_1: 2, someValue_1: "pwd" }
@@ -178,9 +183,10 @@ describe("Testing typed query fadace conversions", () => {
     });
 
     test("Should never call subsequent queries if the arguments list is empty", async () => {
+        class EmptyEntries { }
         const records: any[] = [];
         const TABLE_NAME = "test_tab";
-        await typedFacade(dbMock).multiInsert(TABLE_NAME, records);
+        await typedFacade(dbMock).multiInsert(EmptyEntries, TABLE_NAME, records);
         expect(dbMock.query).not.toBeCalled();
     })
 
@@ -221,6 +227,10 @@ describe("Testing typed query fadace conversions", () => {
     });
 
     test("Error in multiinsert should throw an informative error", async () => {
+        class DbEntries {
+            id = integerField();
+            someValue = stringField();
+        }
         const records = [
             { id: 1, someValue: "txt" },
             { id: 2, someValue: "pwd" }
@@ -228,10 +238,38 @@ describe("Testing typed query fadace conversions", () => {
         const TABLE_NAME = "test_tab";
         dbMock.query.mockImplementation(() => { throw new Error("Gluks"); });
         try {
-            await typedFacade(dbMock).multiInsert(TABLE_NAME, records);
+            await typedFacade(dbMock).multiInsert(DbEntries, TABLE_NAME, records);
             fail("Should never get here");
         } catch (err) {
             expect(err).toContainString("insert query");
         }
+    });
+
+    test("Date insert should convert string input values to date", async () => {
+        class DbEntries {
+            dateField = dateField();
+        }
+        const records = [{}];
+        // We force a wrongly typed value for the field
+        // This happens for example with some wrong conversions coming from GraphQL APIs
+        const dateString = "1990-03-11T12:00:00Z";
+        (records as any)[0]["dateField"] = dateString;
+        await typedFacade(dbMock).multiInsert(DbEntries, "table_name", records);
+        expect(dbMock.query).toBeCalledWith(expect.anything(), { dateField_0: new Date(dateString) });
+    });
+
+    test("Should correctly insert false to nullable boolean fields", async () => {
+        class DbEntries {
+            bulk = booleanField();
+        }
+        const records = [
+            { bulk: false },
+        ];
+        const TABLE_NAME = "test_tab";
+        await typedFacade(dbMock).multiInsert(DbEntries, TABLE_NAME, records);
+        expect(dbMock.query).toBeCalledWith(
+            `INSERT INTO ${TABLE_NAME}(bulk) VALUES(:bulk_0)`,
+            { bulk_0: false }
+        )
     });
 })
