@@ -15,17 +15,6 @@ export const db = () => require('data-api-client')({
     database: process.env.DB_NAME
 });
 
-export const setConnectionTimeouts = (requestTimeout = 30000, connectTimeout = 10000) => {
-    const AWS = require("aws-sdk");
-
-    AWS.config.update({
-        maxRetries: 3,
-        httpOptions: {
-            timeout: requestTimeout,
-            connectTimeout: connectTimeout
-        }
-    });
-}
 
 export interface MultistackProps extends StackProps {
     environment?: string

@@ -19,11 +19,12 @@ export { IMigrator, IQueryInterface } from "./migration-interfaces";
 export { IMigrationRunner, MigrationResult, Migration, MigrationError, ICdkMigratorHandler } from "./migration-interfaces";
 export { listDatabaseChanges } from "./list-database-changes";
 export {
-    typedFacade, ITypedFacade, DbRecord, FieldType, DataField,
-    booleanField, dateField, integerField, notNull, stringField, bigIntField
+    typedFacade, ITypedFacade
 } from "./typed-facade";
-export { DatabaseChange, DatabaseChangeRecord } from "./database-change";
+export { databaseChange, DatabaseChangeRecord } from "./database-change";
 export {
-    db, setConnectionTimeouts, MultistackProps, migratedDatabaseDefaultProps,
+    db, MultistackProps, migratedDatabaseDefaultProps,
     IMigratedDatabaseProps, MigratedDatabase, ILambdaProps, defaultLambdaProps
 } from "./migrated-database-construct";
+export { setConnectionTimeouts, ReportedEvent, HandlerProps, interfaceHandler } from "./lambda-utils";
+export * from "../pepelaz";

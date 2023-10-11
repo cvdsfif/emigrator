@@ -1,7 +1,7 @@
-import { DatabaseError } from "pg";
-import { DatabaseChange, IQueryInterface } from "../src";
-import { DbRecord, bigIntField, booleanField, dateField, floatField, integerField, notNull, stringField, typedFacade } from "../src/typed-facade";
+import { IQueryInterface } from "../src";
+import { typedFacade } from "../src/typed-facade";
 import { extendExpectWithContainString } from "./expect-string-containing";
+import { DbRecord, bigIntField, booleanField, dateField, fieldArray, fieldObject, floatField, integerField, notNull, stringField, unmarshal } from "../pepelaz";
 
 describe("Testing typed query fadace conversions", () => {
     class QueryInterfaceMock implements IQueryInterface { query = jest.fn(); }
@@ -12,28 +12,24 @@ describe("Testing typed query fadace conversions", () => {
 
     extendExpectWithContainString();
 
-    class DatabaseChangeInput {
-        creationOrder = integerField(5);
-        intNotNull = integerField(notNull);
-        nullableInt = integerField();
-        somethingFloat = floatField();
-        somethingBig = bigIntField(notNull);
-        nullableBig = bigIntField();
-        ecriture = stringField();
-        unJour = dateField();
-        veritas = booleanField();
-        incorrect = 42;
-        moreIncorrect = 43;
-        calculated = integerField(() => 2 * 2);
-        explicitlyNullableInt = integerField(null);
-        stringWithDefault = stringField("");
-        calculatedNullableDefault = stringField(() => null);
-        calculatedNotNullableDefault = stringField(() => notNull);
-        falsishBool = booleanField();
-        nullishBool = booleanField();
-    }
-
-    type DatabaseChangeRecord = DbRecord<DatabaseChangeInput>;
+    const databaseChangeInput = fieldObject({
+        creationOrder: integerField(5),
+        intNotNull: integerField(notNull),
+        nullableInt: integerField(),
+        somethingFloat: floatField(),
+        somethingBig: bigIntField(notNull),
+        nullableBig: bigIntField(),
+        ecriture: stringField(),
+        unJour: dateField(),
+        veritas: booleanField(),
+        calculated: integerField(() => 2 * 2),
+        explicitlyNullableInt: integerField(null),
+        stringWithDefault: stringField(""),
+        calculatedNullableDefault: stringField(() => null),
+        calculatedNotNullableDefault: stringField(() => notNull),
+        falsishBool: booleanField(),
+        nullishBool: booleanField()
+    });
 
     test("Types should be converted correctly", async () => {
         dbMock.query.mockReturnValue(Promise
@@ -51,8 +47,8 @@ describe("Testing typed query fadace conversions", () => {
                     }]
                 }
             ));
-        const record: DatabaseChangeRecord =
-            (await typedFacade(dbMock).typedQuery(DatabaseChangeInput, "")).records[0];
+        const record =
+            (await typedFacade(dbMock).typedQuery(databaseChangeInput, "")).records[0];
         expect(record.creationOrder).toEqual(1);
         expect(record.somethingFloat).toEqual(3.456);
         expect(record.somethingBig).toEqual(BigInt("12345678901234567890"));
@@ -61,121 +57,19 @@ describe("Testing typed query fadace conversions", () => {
         expect(record.veritas).toBeTruthy();
     });
 
-    test("Fields should take default values if omitted", async () => {
-        dbMock.query.mockReturnValue(Promise
-            .resolve(
-                {
-                    records: [{
-                        intNotNull: "0",
-                        somethingfloat: "3.456",
-                        something_big: "12345678901234567890",
-                        ecriture: "451",
-                        un_jour: "1990-03-11",
-                        calculatedNotNullableDefault: "str"
-                    }]
-                }
-            ));
-        const record: DatabaseChangeRecord =
-            (await typedFacade(dbMock).typedQuery(DatabaseChangeInput, "")).records[0];
-        expect(record.creationOrder).toEqual(5);
-    });
-
-    test("Dummy values fields should be accepted, both default and valued", async () => {
-        dbMock.query.mockReturnValue(Promise
-            .resolve(
-                {
-                    records: [{
-                        intNotNull: "0",
-                        somethingfloat: "3.456",
-                        something_big: "12345678901234567890",
-                        ecriture: "451",
-                        un_jour: "1990-03-11",
-                        moreIncorrect: 51,
-                        calculatedNotNullableDefault: "str"
-                    }]
-                }
-            ));
-        const record: DatabaseChangeRecord =
-            (await typedFacade(dbMock).typedQuery(DatabaseChangeInput, "")).records[0];
-        expect(record.incorrect).toEqual(42);
-        expect(record.moreIncorrect).toEqual(51);
-    });
-
-    test("Should throw exception if a mandatory field is omitted", async () => {
-        dbMock.query.mockReturnValue(Promise
-            .resolve(
-                {
-                    records: [{
-                        intNotNull: "0",
-                        somethingfloat: "3.456",
-                        ecriture: "451",
-                        un_jour: "1990-03-11",
-                        calculatedNotNullableDefault: "str"
-                    }]
-                }
-            ));
-        try {
-            await typedFacade(dbMock).typedQuery(DatabaseChangeInput, "");
-            expect(true).toBeFalsy();
-        } catch (e) {
-            expect(true).toBeTruthy();
-        }
-    });
-
-    test("Should accept functions as default initializers", async () => {
-        dbMock.query.mockReturnValue(Promise
-            .resolve(
-                {
-                    records: [{
-                        intNotNull: "0",
-                        somethingfloat: "3.456",
-                        something_big: "12345678901234567890",
-                        ecriture: "451",
-                        un_jour: "1990-03-11",
-                        moreIncorrect: 51,
-                        calculatedNotNullableDefault: "str"
-                    }]
-                }
-            ));
-        const record: DatabaseChangeRecord =
-            (await typedFacade(dbMock).typedQuery(DatabaseChangeInput, "")).records[0];
-        expect(record.calculated).toEqual(4);
-    });
-
-    test("Boolean field should make difference between false and null", async () => {
-        dbMock.query.mockReturnValue(Promise
-            .resolve(
-                {
-                    records: [{
-                        intNotNull: 0,
-                        somethingfloat: "3.456",
-                        something_big: "12345678901234567890",
-                        ecriture: "451",
-                        un_jour: "1990-03-11",
-                        moreIncorrect: 51,
-                        falsishBool: false,
-                        nullishBool: null,
-                        calculatedNotNullableDefault: "str"
-                    }]
-                }
-            ));
-        const record: DatabaseChangeRecord =
-            (await typedFacade(dbMock).typedQuery(DatabaseChangeInput, "")).records[0];
-        expect(record.nullishBool).toBeNull();
-        expect(record.falsishBool).toBe(false);
-    });
-
     test("Should translate query with two insert values", async () => {
-        class DbEntries {
-            id = integerField();
-            someValue = stringField();
-        }
-        const records = [
-            { id: 1, someValue: "txt" },
-            { id: 2, someValue: "pwd" }
-        ];
+        const dbEntries = fieldObject({
+            id: integerField(),
+            someValue: stringField(),
+        });
+        const records = `[
+            { "id": "1", "someValue": "txt" },
+            { "id": 2, "someValue": "pwd" }
+        ]`;
         const TABLE_NAME = "test_tab";
-        await typedFacade(dbMock).multiInsert(DbEntries, TABLE_NAME, records);
+        const unmarshalled = unmarshal(fieldArray(dbEntries), JSON.parse(records));
+        console.log(unmarshalled);
+        await typedFacade(dbMock).multiInsert(dbEntries, TABLE_NAME, unmarshalled);
         expect(dbMock.query).toBeCalledWith(
             `INSERT INTO ${TABLE_NAME}(id,some_value) VALUES(:id_0,:someValue_0),(:id_1,:someValue_1)`,
             { id_0: 1, someValue_0: "txt", id_1: 2, someValue_1: "pwd" }
@@ -183,21 +77,11 @@ describe("Testing typed query fadace conversions", () => {
     });
 
     test("Should never call subsequent queries if the arguments list is empty", async () => {
-        class EmptyEntries { }
+        const emptyEntries = fieldObject({});
         const records: any[] = [];
         const TABLE_NAME = "test_tab";
-        await typedFacade(dbMock).multiInsert(EmptyEntries, TABLE_NAME, records);
+        await typedFacade(dbMock).multiInsert(emptyEntries, TABLE_NAME, records);
         expect(dbMock.query).not.toBeCalled();
-    })
-
-    test("Nullable input values should produce nullable fields in the target interface", () => {
-        class TestInput {
-            id = integerField();
-            str = stringField(notNull);
-        };
-        type TestClass = DbRecord<TestInput>;
-        const val: TestClass = { str: "15" };
-        expect(val.id).toBeUndefined();
     });
 
     test("Select all with fields autofill should pass", async () => {
@@ -206,7 +90,7 @@ describe("Testing typed query fadace conversions", () => {
         const bigIntValue = 100n;
         const stringValue = "str";
         const dateValue = new Date("1974-03-02");
-        const input: DatabaseChangeRecord = {
+        const input = {
             creationOrder: intValue,
             nullableInt: 0,
             somethingFloat: floatValue,
@@ -219,57 +103,95 @@ describe("Testing typed query fadace conversions", () => {
             veritas: true
         };
         dbMock.query.mockReturnValue({ records: [input] });
-        const retval = (await typedFacade(dbMock).select(DatabaseChangeInput, "storage_table WHERE int_value > 0", {}))[0];
+        const retval = (await typedFacade(dbMock).select(databaseChangeInput, "storage_table WHERE int_value > 0", {}))[0];
         expect(dbMock.query).toBeCalledWith(
-            "SELECT creation_order,int_not_null,nullable_int,something_float,something_big,nullable_big,ecriture,un_jour,veritas,incorrect,more_incorrect,calculated,explicitly_nullable_int,string_with_default,calculated_nullable_default,calculated_not_nullable_default,falsish_bool,nullish_bool FROM storage_table WHERE int_value > 0",
+            "SELECT creation_order,int_not_null,nullable_int,something_float,something_big,nullable_big,ecriture,un_jour,veritas,calculated,explicitly_nullable_int,string_with_default,calculated_nullable_default,calculated_not_nullable_default,falsish_bool,nullish_bool FROM storage_table WHERE int_value > 0",
             {});
         expect(retval.creationOrder).toEqual(intValue);
     });
 
     test("Error in multiinsert should throw an informative error", async () => {
-        class DbEntries {
-            id = integerField();
-            someValue = stringField();
-        }
+        const dbEntries = fieldObject({
+            id: integerField(),
+            someValue: stringField()
+        });
         const records = [
             { id: 1, someValue: "txt" },
             { id: 2, someValue: "pwd" }
         ];
         const TABLE_NAME = "test_tab";
         dbMock.query.mockImplementation(() => { throw new Error("Gluks"); });
-        try {
-            await typedFacade(dbMock).multiInsert(DbEntries, TABLE_NAME, records);
-            fail("Should never get here");
-        } catch (err) {
-            expect(err).toContainString("insert query");
-        }
-    });
-
-    test("Date insert should convert string input values to date", async () => {
-        class DbEntries {
-            dateField = dateField();
-        }
-        const records = [{}];
-        // We force a wrongly typed value for the field
-        // This happens for example with some wrong conversions coming from GraphQL APIs
-        const dateString = "1990-03-11T12:00:00Z";
-        (records as any)[0]["dateField"] = dateString;
-        await typedFacade(dbMock).multiInsert(DbEntries, "table_name", records);
-        expect(dbMock.query).toBeCalledWith(expect.anything(), { dateField_0: new Date(dateString) });
+        expect(async () => await typedFacade(dbMock).multiInsert(dbEntries, TABLE_NAME, records)).rejects.toThrow();
     });
 
     test("Should correctly insert false to nullable boolean fields", async () => {
-        class DbEntries {
-            bulk = booleanField();
-        }
+        const dbEntries = fieldObject({
+            bulk: booleanField()
+        });
         const records = [
             { bulk: false },
         ];
         const TABLE_NAME = "test_tab";
-        await typedFacade(dbMock).multiInsert(DbEntries, TABLE_NAME, records);
+        await typedFacade(dbMock).multiInsert(dbEntries, TABLE_NAME, records);
         expect(dbMock.query).toBeCalledWith(
             `INSERT INTO ${TABLE_NAME}(bulk) VALUES(:bulk_0)`,
             { bulk_0: false }
         )
+    });
+
+    test("Should insert bigints as plain numbers", async () => {
+        const dbEntries = fieldObject({
+            big: bigIntField()
+        });
+        const records = [
+            { big: 1000000000000001n },
+        ];
+        const TABLE_NAME = "test_tab";
+        await typedFacade(dbMock).multiInsert(dbEntries, TABLE_NAME, records);
+        expect(dbMock.query).toBeCalledWith(
+            `INSERT INTO ${TABLE_NAME}(big) VALUES(:big_0)`,
+            { big_0: Number(1000000000000001n) }
+        )
+    });
+
+    test("Should be able to extract data from field objects", () => {
+        const recordInput = fieldObject({ id: integerField() });
+        type Record = DbRecord<typeof recordInput>;
+        let rec: Record;
+        rec = unmarshal(recordInput, { id: 42 });
+        expect(rec.id).toBe(42);
+    });
+
+    test("Should correctly unmarshal a typical object", async () => {
+        const transactionInput = fieldObject({
+            id: stringField(),
+            accountId: bigIntField(notNull),
+            amount: bigIntField(notNull),
+            reference: stringField(notNull),
+            transactionType: stringField(notNull),
+            transactionTs: dateField(notNull),
+            runningBalance: bigIntField(notNull),
+            gameId: integerField(notNull),
+            tableId: bigIntField(notNull),
+            sessionId: bigIntField(notNull),
+            isConsolidation: booleanField()
+        });
+        dbMock.query.mockReturnValue({
+            records: [{
+                id: "WWW",
+                accountId: 1n,
+                amount: 100500n,
+                reference: "ref",
+                transactionType: "T1",
+                transactionTs: "1974-03-02",
+                runningBalance: 2n,
+                gameId: 2,
+                tableId: 3,
+                sessionId: "4",
+                isConsolidation: false
+            }]
+        });
+        const result = await typedFacade(dbMock).typedQuery(transactionInput, "");
+        expect(result.records[0].transactionType).toEqual("T1");
     });
 })

@@ -1,12 +1,12 @@
-import { DbRecord, booleanField, dateField, integerField, notNull, stringField } from "./typed-facade";
+import { DbRecord, booleanField, dateField, fieldObject, integerField, notNull, stringField } from "../pepelaz";
 
-export class DatabaseChange {
-    creationOrder = integerField(notNull);
-    description = stringField(notNull);
-    runTs = dateField(notNull);
-    queryExecuted = stringField(notNull);
-    successful = booleanField(notNull);
-    message = stringField();
-}
+export const databaseChange = fieldObject({
+    creationOrder: integerField(notNull),
+    description: stringField(notNull),
+    runTs: dateField(notNull),
+    queryExecuted: stringField(notNull),
+    successful: booleanField(notNull),
+    message: stringField()
+});
 
-export type DatabaseChangeRecord = DbRecord<DatabaseChange>;
+export type DatabaseChangeRecord = DbRecord<typeof databaseChange>;

@@ -33,7 +33,8 @@ describe("Testing integrity of the test runner", () => {
     });
 
     test("Should correctly get the migrated objects' list", async () => {
-        expect((await listDatabaseChanges(typedFacade(connectedInterface)))[0])
+        const newLocal = await listDatabaseChanges(typedFacade(connectedInterface));
+        expect(newLocal[0])
             .toEqual(expect.objectContaining({ creationOrder: 1 }))
     })
 });
