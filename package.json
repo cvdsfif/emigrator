@@ -1,6 +1,6 @@
 {
   "name": "emigrator-ts",
-  "version": "2.1.0",
+  "version": "2.2.0-beta.0",
   "description": "Extendable database migration library adapted to CDK projects written in TypeScript",
   "main": "./dist/index.js",
   "exports": {
@@ -49,6 +49,8 @@
   },
   "homepage": "https://github.com/cvdsfif/emigrator#readme",
   "devDependencies": {
+    "@aws-cdk/aws-apigatewayv2-alpha": "^2.100.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.100.0-alpha.0",
     "@testcontainers/postgresql": "^10.2.1",
     "@types/aws-lambda": "^8.10.121",
     "@types/jest": "^29.5.4",
