@@ -24,7 +24,6 @@ export {
 export { databaseChange, DatabaseChangeRecord } from "./database-change";
 export {
     db, MultistackProps, migratedDatabaseDefaultProps,
-    IMigratedDatabaseProps, MigratedDatabase, ILambdaProps, defaultLambdaProps
+    IMigratedDatabaseProps, MigratedDatabase, ILambdaProps, defaultLambdaProps,
 } from "./migrated-database-construct";
 export { setConnectionTimeouts, ReportedEvent, HandlerProps, interfaceHandler } from "./lambda-utils";
-export * from "../pepelaz";

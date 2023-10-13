@@ -1,4 +1,4 @@
-import { DbRecord, booleanField, dateField, fieldObject, integerField, notNull, stringField } from "../pepelaz";
+import { DbRecord, booleanField, dateField, fieldObject, integerField, notNull, stringField } from "pepelaz";
 
 export const databaseChange = fieldObject({
     creationOrder: integerField(notNull),

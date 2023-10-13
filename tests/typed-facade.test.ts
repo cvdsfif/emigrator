@@ -1,7 +1,7 @@
 import { IQueryInterface } from "../src";
 import { typedFacade } from "../src/typed-facade";
 import { extendExpectWithContainString } from "./expect-string-containing";
-import { DbRecord, bigIntField, booleanField, dateField, fieldArray, fieldObject, floatField, integerField, notNull, stringField, unmarshal } from "../pepelaz";
+import { DbRecord, bigIntField, booleanField, dateField, fieldArray, fieldObject, floatField, integerField, notNull, stringField, unmarshal } from "pepelaz";
 
 describe("Testing typed query fadace conversions", () => {
     class QueryInterfaceMock implements IQueryInterface { query = jest.fn(); }
@@ -68,7 +68,6 @@ describe("Testing typed query fadace conversions", () => {
         ]`;
         const TABLE_NAME = "test_tab";
         const unmarshalled = unmarshal(fieldArray(dbEntries), JSON.parse(records));
-        console.log(unmarshalled);
         await typedFacade(dbMock).multiInsert(dbEntries, TABLE_NAME, unmarshalled);
         expect(dbMock.query).toBeCalledWith(
             `INSERT INTO ${TABLE_NAME}(id,some_value) VALUES(:id_0,:someValue_0),(:id_1,:someValue_1)`,
@@ -149,8 +148,8 @@ describe("Testing typed query fadace conversions", () => {
         const TABLE_NAME = "test_tab";
         await typedFacade(dbMock).multiInsert(dbEntries, TABLE_NAME, records);
         expect(dbMock.query).toBeCalledWith(
-            `INSERT INTO ${TABLE_NAME}(big) VALUES(:big_0)`,
-            { big_0: Number(1000000000000001n) }
+            `INSERT INTO ${TABLE_NAME}(big) VALUES(CAST(:big_0 AS BIGINT))`,
+            { big_0: "1000000000000001" }
         )
     });
 

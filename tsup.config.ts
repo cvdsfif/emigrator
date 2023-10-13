@@ -5,7 +5,6 @@ export default defineConfig({
     format: ["cjs", "esm"], // Build for commonJS and ESmodules
     dts: true,
     skipNodeModulesBundle: true,
-    noExternal: ['node_modules/pepelaz'],
     splitting: false,
     sourcemap: true,
     clean: true,

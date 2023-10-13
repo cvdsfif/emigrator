@@ -1,4 +1,4 @@
-import { BigIntField, DbRecord, FieldObject, FieldObjectDefinition, bigIntField, stringifyWithBigints, unmarshal } from "../pepelaz";
+import { BigIntField, DbRecord, FieldObject, FieldObjectDefinition, stringifyWithBigints, unmarshal } from "pepelaz";
 import { IQueryInterface } from "./migration-interfaces";
 
 export interface ITypedFacade extends IQueryInterface {
@@ -35,7 +35,10 @@ class TypedFacade implements ITypedFacade {
     private indexedRecordExpansion = <T extends FieldObjectDefinition>(record: any, index: number, template: FieldObject<T>) => {
         const fillTarget = {};
         Object.keys(record).forEach(key =>
-            (fillTarget as any)[`${key}_${index}`] = template.definition[key] instanceof BigIntField ? Number(record[key]) : record[key]);
+            (fillTarget as any)[`${key}_${index}`] =
+            template.definition[key] instanceof BigIntField ?
+                record[key].toString() :
+                record[key]);
         return fillTarget;
     }
 
@@ -45,7 +48,11 @@ class TypedFacade implements ITypedFacade {
             , {})
 
     private translateTransactionFieldsIntoIndexedArguments = (record: any, index: number, template: any) =>
-        Object.keys(template.definition).map(key => `:${key}_${index}`).join(",");
+        Object.keys(template.definition).map(key =>
+            template.definition[key] instanceof BigIntField ?
+                `CAST(:${key}_${index} AS BIGINT)` :
+                `:${key}_${index}`
+        ).join(",");
 
     private expandedArgumentsList = (records: any, template: any) =>
         records.map((record: any, index: number) =>
@@ -58,10 +65,7 @@ class TypedFacade implements ITypedFacade {
         let values: any;
         try {
             query = `INSERT INTO ${tableName}(${this.expandTableFields(template)}) VALUES${this.expandedArgumentsList(records, template)}`
-            console.log(query);
-            console.log(stringifyWithBigints(records));
             values = this.expandedValuesList(records, template);
-            console.log(values);
             await this.db.query(query, values);
             return records;
         } catch (err: any) {

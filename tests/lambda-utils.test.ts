@@ -1,6 +1,5 @@
 import { HandlerProps, interfaceHandler, setConnectionTimeouts } from "../src/lambda-utils";
-import { fieldObject, integerField, stringField, functionField, DataInterfaceDefinition, FunctionFieldType, stringifyWithBigints, FunctionArgumentType, FunctionReturnType, fieldArray } from "../pepelaz";
-import { testInterfaceImplementation } from "../src/lambda-utils-test-support";
+import { fieldObject, integerField, stringField, functionField, DataInterfaceDefinition, stringifyWithBigints, fieldArray, voidField } from "pepelaz";
 
 describe("Checking the lambda utils behaviour", () => {
 
@@ -30,9 +29,23 @@ describe("Checking the lambda utils behaviour", () => {
             { body: `[{"arg":"1"}]` },
             {}
         );
-        //await testInterfaceImplementation(exportInterface, "exportFn", `[{"arg":"1"}]`);
         expect(AWS.config.update).toBeCalled();
         expect(result).toBe(`Returning [{\"arg\":1}]`);
     });
+
+    test("Should allow empty list of arguments and void return type", async () => {
+        const voidInterface: DataInterfaceDefinition = {
+            run: functionField(voidField(), voidField())
+        }
+        //const callerFunction = async (input: void, props: HandlerProps): Promise<void> => { };
+        const callerFunction = jest.fn();
+        await interfaceHandler(
+            voidInterface,
+            "run",
+            callerFunction,
+            { body: `` }, {}
+        );
+        expect(callerFunction).toBeCalledWith(undefined, {});
+    })
 
 });

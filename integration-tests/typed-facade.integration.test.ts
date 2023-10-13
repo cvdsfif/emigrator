@@ -1,5 +1,5 @@
 import { IMigrationRunner, ITypedFacade, createEmigrator, createPostgresRunner, typedFacade } from "../src";
-import { bigIntField, booleanField, dateField, fieldObject, integerField, notNull, stringField } from "../pepelaz";
+import { bigIntField, booleanField, dateField, fieldObject, integerField, notNull, stringField } from "pepelaz";
 import PostgresRunner from "../src/postgres-runner";
 import { IConnectedTestInterface, getConnectedPostgresInterface } from "../src/postgres-test-interface";
 
@@ -61,7 +61,7 @@ describe("Testing database-related features of typed facade", () => {
     });
 
     test("Should correctly insert and retake bigints", async () => {
-        const hugeValue = 1000000000000000n;
+        const hugeValue = 1000000000000001n;
         const stopizot = 100500n;
         const record = [{ id: hugeValue, someValue: "gig", numField: stopizot }];
         await facade.multiInsert(input, TEST_TABLE, record);
@@ -81,7 +81,7 @@ describe("Testing database-related features of typed facade", () => {
     });
 
     test("Should correctly store bigints in integer fields", async () => {
-        const hugeValue = 1000000000000000n;
+        const hugeValue = 1000000000000001n;
         const ifi = 500;
         const record = [{ id: hugeValue, someValue: "gig", intField: ifi }];
         await facade.multiInsert(input, TEST_TABLE, record);
@@ -98,7 +98,7 @@ describe("Testing database-related features of typed facade", () => {
     });
 
     test("Select should execute a sane query", async () => {
-        const hugeValue = 1000000000000000n;
+        const hugeValue = 1000000000000001n;
         const stopizot = 100500n;
         const record = [{ id: hugeValue, someValue: "gig", numField: stopizot }];
         await facade.multiInsert(input, TEST_TABLE, record);
@@ -108,7 +108,7 @@ describe("Testing database-related features of typed facade", () => {
     });
 
     test("Should correctly accept date fields", async () => {
-        const hugeValue = 1000000000000000n;
+        const hugeValue = 1000000000000001n;
         const stopizot = 100500n;
         const datushka = new Date("1990-03-11T04:20:35Z");
         const record = [{ id: hugeValue, someValue: "gig", numField: stopizot, dateField: datushka }];
@@ -118,7 +118,7 @@ describe("Testing database-related features of typed facade", () => {
     });
 
     test("Should correctly false booleans when default is true", async () => {
-        const hugeValue = 1000000000000000n;
+        const hugeValue = 1000000000000001n;
         const stopizot = 100500n;
         const record = [{ id: hugeValue, someValue: "gig", numField: stopizot, isCool: false }];
         await facade.multiInsert(input, TEST_TABLE, record);

@@ -1,4 +1,4 @@
-import { DataInterfaceDefinition, FunctionArgumentType, FunctionReturnType, stringifyWithBigints, unmarshal } from "../pepelaz";
+import { DataInterfaceDefinition, FunctionArgumentType, FunctionReturnType, VoidField, unmarshal } from "pepelaz";
 import { ITypedFacade } from "./typed-facade";
 
 export const setConnectionTimeouts = (requestTimeout = 30000, connectTimeout = 10000, maxRetries = 3) => {
@@ -30,9 +30,9 @@ export const interfaceHandler = async <T extends DataInterfaceDefinition, K exte
         props: HandlerProps
     ): Promise<FunctionReturnType<T[K]>> => {
     setConnectionTimeouts();
-    console.log("Converting input");
-    console.log(event.body);
-    const argument = unmarshal(template[implemented].argument, JSON.parse(event.body));
-    console.log(stringifyWithBigints(argument));
+    const argument =
+        template[implemented].argument instanceof VoidField ?
+            void {} :
+            unmarshal(template[implemented].argument, JSON.parse(event.body));
     return await handleFunction(argument, props);
 }

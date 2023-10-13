@@ -1,4 +1,4 @@
-import { CustomResource, Duration, StackProps } from "aws-cdk-lib";
+import { CfnOutput, CustomResource, Duration, StackProps } from "aws-cdk-lib";
 import { aws_ec2 as ec2 } from "aws-cdk-lib";
 import { aws_rds as rds } from "aws-cdk-lib";
 import { aws_lambda as lambda } from "aws-cdk-lib";
@@ -8,6 +8,9 @@ import { RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Provider } from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 import { IMigrator } from "./migration-interfaces";
+import { CorsHttpMethod, HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
+import { IApiProps } from "pepelaz";
 
 export const db = () => require('data-api-client')({
     secretArn: process.env.SECRET_ARN,
@@ -29,6 +32,10 @@ export interface ILambdaProps {
 export const defaultLambdaProps: Pick<ILambdaProps, ('extraLayers' | 'extraModules')> = {
     extraLayers: [],
     extraModules: []
+}
+
+export interface ILambdaPropsDictionary {
+    [Key: string]: ILambdaProps
 }
 
 export interface IMigratedDatabaseProps extends MultistackProps {
@@ -58,16 +65,20 @@ export const migratedDatabaseDefaultProps:
     }
 }
 
+export interface IApiInformation {
+    name: string,
+    url: string
+}
+
 export class MigratedDatabase extends Construct {
     readonly versionedLayerFromPackage: (packageName: string) => lambda.LayerVersion;
     readonly createLambda: (functionName: string, extraProps: ILambdaProps) => nodejs.NodejsFunction;
+    readonly defineApi: (props: IApiProps, additionalLambdaProps: ILambdaPropsDictionary) => IApiInformation;
 
     readonly cluster: rds.ServerlessCluster;
     readonly awsSdkLayer: lambda.LayerVersion;
     readonly awsCdkLibLayer: lambda.LayerVersion;
-    readonly dataApiLayer: lambda.LayerVersion;
     readonly emigratorTsLayer: lambda.LayerVersion;
-    readonly constructsLayer: lambda.LayerVersion;
 
     constructor(scope: Construct, id: string, props: IMigratedDatabaseProps) {
         super(scope, id);
@@ -97,9 +108,7 @@ export class MigratedDatabase extends Construct {
 
         this.awsSdkLayer = this.versionedLayerFromPackage("aws-sdk");
         this.awsCdkLibLayer = this.versionedLayerFromPackage("aws-cdk-lib");
-        this.dataApiLayer = this.versionedLayerFromPackage("data-api-client");
         this.emigratorTsLayer = this.versionedLayerFromPackage("emigrator-ts");
-        this.constructsLayer = this.versionedLayerFromPackage("constructs");
 
         this.createLambda =
             (functionName: string, extraProps: ILambdaProps) =>
@@ -122,22 +131,55 @@ export class MigratedDatabase extends Construct {
                         sourceMap: true,
                         externalModules: [
                             'aws-sdk',
-                            'data-api-client',
                             'emigrator-ts',
+                            'pepelaz',
+                            'data-api-client',
                             ...extraProps.extraModules
                         ]
                     },
                     layers: [
-                        this.dataApiLayer, this.awsSdkLayer, this.emigratorTsLayer, this.awsCdkLibLayer,
+                        this.awsSdkLayer, this.emigratorTsLayer, this.awsCdkLibLayer,
                         ...extraProps.extraLayers
                     ],
-                    ...extraProps
+                    ...extraProps,
+                    description: extraProps.description ?
+                        `${extraProps.description} (${props?.environment})` :
+                        `${functionName} (${props?.environment})`
                 });
+
+        this.defineApi = (apiProps: IApiProps, additionalLambdaProps: ILambdaPropsDictionary = {}) => {
+            const httpApi = new HttpApi(this, `ProxyCorsHttpApi-${apiProps.name}-${props?.environment}`, {
+                corsPreflight: { allowMethods: [CorsHttpMethod.ANY], allowOrigins: ['*'], allowHeaders: ['*'] },
+            });
+
+            Object.keys(apiProps.definition).forEach(key => {
+                const keyWithDashes = key.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`);
+                const databaseLambda = this.createLambda(`${keyWithDashes}-lambda`, additionalLambdaProps[key] ?? {
+                    ...defaultLambdaProps,
+                    description: `${apiProps.description} : ${key}`,
+                });
+                this.cluster.grantDataApiAccess(databaseLambda);
+
+                const lambdaIntegration = new HttpLambdaIntegration(
+                    `Integration-${apiProps.name}-${key}-${props?.environment}`,
+                    databaseLambda
+                );
+
+                httpApi.addRoutes({
+                    integration: lambdaIntegration,
+                    methods: [HttpMethod.POST],
+                    path: `/${keyWithDashes}`
+                });
+            });
+            return {
+                name: apiProps.name,
+                url: httpApi.apiEndpoint
+            };
+        }
 
         const migrationLambdaFn = this.createLambda(`${props.migrationLambdaName}`, {
             description: 'Lambda used for database schema migration',
-            extraModules: ['constructs'],
-            extraLayers: [this.constructsLayer]
+            ...defaultLambdaProps
         });
 
         const customResourceProvider = new Provider(this, `migration-resource-provider-${props?.environment}`, {
