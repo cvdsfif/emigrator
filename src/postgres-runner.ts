@@ -1,4 +1,5 @@
-import { IQueryInterface, Migration, MigrationError, MigrationResult, MigrationRunner } from "./migration-interfaces";
+import { IQueryInterface } from "pepelaz-db";
+import { Migration, MigrationError, MigrationResult, MigrationRunner } from "./migration-interfaces";
 
 export default class PostgresRunner extends MigrationRunner {
     constructor(db: IQueryInterface) {

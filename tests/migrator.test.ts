@@ -1,5 +1,6 @@
 import { createEmigrator } from "../src";
-import { IQueryInterface, Migration, MigrationError, MigrationResult, MigrationRunner } from "../src/migration-interfaces";
+import { Migration, MigrationError, MigrationResult, MigrationRunner } from "../src/migration-interfaces";
+import { IQueryInterface } from "pepelaz-db";
 
 const migration1 = { order: 1, query: "SQL", description: "test" };
 const migration3 = { order: 3, query: "SQL", description: "test2" }

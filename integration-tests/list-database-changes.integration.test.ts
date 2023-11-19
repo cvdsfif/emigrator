@@ -1,8 +1,8 @@
+import { typedFacade } from "pepelaz-db";
 import { IMigrationRunner, createEmigrator, createPostgresRunner } from "../src";
 import { listDatabaseChanges } from "../src/list-database-changes";
 import PostgresRunner from "../src/postgres-runner";
 import { IConnectedTestInterface, getConnectedPostgresInterface } from "../src/postgres-test-interface";
-import { typedFacade } from "../src/typed-facade";
 
 describe("Testing integrity of the test runner", () => {
     jest.setTimeout(60000);

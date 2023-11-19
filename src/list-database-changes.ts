@@ -1,6 +1,6 @@
+import { ITypedFacade } from "pepelaz-db";
 import { databaseChange } from "./database-change";
 import PostgresRunner from "./postgres-runner";
-import { ITypedFacade } from "./typed-facade";
 
 export async function listDatabaseChanges(db: ITypedFacade) {
     const queryResult = await db.typedQuery(databaseChange, `

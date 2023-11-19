@@ -4,38 +4,33 @@ import { aws_rds as rds } from "aws-cdk-lib";
 import { aws_lambda as lambda } from "aws-cdk-lib";
 import { aws_lambda_nodejs as nodejs } from "aws-cdk-lib";
 import { Architecture } from "aws-cdk-lib/aws-lambda";
-import { RetentionDays } from "aws-cdk-lib/aws-logs";
+import { DataIdentifier, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { Provider } from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 import { IMigrator } from "./migration-interfaces";
 import { CorsHttpMethod, HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
-import { IApiProps } from "pepelaz";
-
-export const db = () => require('data-api-client')({
-    secretArn: process.env.SECRET_ARN,
-    resourceArn: process.env.CLUSTER_ARN,
-    database: process.env.DB_NAME
-});
-
+import { ApiProps, DataInterfaceDefinition } from "pepelaz";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 
 export interface MultistackProps extends StackProps {
     environment?: string
 }
 
+export type Environment = {
+    [key: string]: string
+}
 export interface ILambdaProps {
     description?: string,
     extraModules: string[],
-    extraLayers: lambda.LayerVersion[]
+    extraLayers: lambda.LayerVersion[],
+    extraEnv: Environment
 }
 
-export const defaultLambdaProps: Pick<ILambdaProps, ('extraLayers' | 'extraModules')> = {
+export const defaultLambdaProps: Pick<ILambdaProps, ('extraLayers' | 'extraModules' | 'extraEnv')> = {
     extraLayers: [],
-    extraModules: []
-}
-
-export interface ILambdaPropsDictionary {
-    [Key: string]: ILambdaProps
+    extraModules: [],
+    extraEnv: {}
 }
 
 export interface IMigratedDatabaseProps extends MultistackProps {
@@ -65,15 +60,27 @@ export const migratedDatabaseDefaultProps:
     }
 }
 
-export interface IApiInformation {
+export type LambdaMap<T extends DataInterfaceDefinition> = {
+    [key in keyof T]?: NodejsFunction
+};
+export interface IApiInformation<T extends DataInterfaceDefinition> {
     name: string,
-    url: string
+    url: string,
+    lambdaConstructs: LambdaMap<T>;
+}
+
+export type ApiLambdaProps<T extends DataInterfaceDefinition> = {
+    [K in keyof T]?: ILambdaProps;
+}
+
+export interface IApiProps extends ApiProps {
+    description: string
 }
 
 export class MigratedDatabase extends Construct {
     readonly versionedLayerFromPackage: (packageName: string) => lambda.LayerVersion;
     readonly createLambda: (functionName: string, extraProps: ILambdaProps) => nodejs.NodejsFunction;
-    readonly defineApi: (props: IApiProps, additionalLambdaProps: ILambdaPropsDictionary) => IApiInformation;
+    readonly defineApi: <T extends DataInterfaceDefinition>(props: IApiProps, lambdaProps: ApiLambdaProps<T>) => IApiInformation<T>;
 
     readonly cluster: rds.ServerlessCluster;
     readonly awsSdkLayer: lambda.LayerVersion;
@@ -125,7 +132,8 @@ export class MigratedDatabase extends Construct {
                         SECRET_ARN: this.cluster.secret?.secretArn || '',
                         DB_NAME: props.databaseName,
                         ENVIRONMENT: `${props?.environment}`,
-                        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+                        AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
+                        ...extraProps.extraEnv
                     },
                     bundling: {
                         sourceMap: true,
@@ -133,6 +141,7 @@ export class MigratedDatabase extends Construct {
                             'aws-sdk',
                             'emigrator-ts',
                             'pepelaz',
+                            'pepelaz-db',
                             'data-api-client',
                             ...extraProps.extraModules
                         ]
@@ -147,17 +156,19 @@ export class MigratedDatabase extends Construct {
                         `${functionName} (${props?.environment})`
                 });
 
-        this.defineApi = (apiProps: IApiProps, additionalLambdaProps: ILambdaPropsDictionary = {}) => {
+        this.defineApi = <T extends DataInterfaceDefinition>(apiProps: IApiProps, lambdaProps: ApiLambdaProps<T>) => {
             const httpApi = new HttpApi(this, `ProxyCorsHttpApi-${apiProps.name}-${props?.environment}`, {
                 corsPreflight: { allowMethods: [CorsHttpMethod.ANY], allowOrigins: ['*'], allowHeaders: ['*'] },
             });
 
+            const lambdaConstructs: LambdaMap<T> = {};
             Object.keys(apiProps.definition).forEach(key => {
                 const keyWithDashes = key.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`);
-                const databaseLambda = this.createLambda(`${keyWithDashes}-lambda`, additionalLambdaProps[key] ?? {
+                const databaseLambda = this.createLambda(`${keyWithDashes}-lambda`, lambdaProps[key] ?? {
                     ...defaultLambdaProps,
                     description: `${apiProps.description} : ${key}`,
                 });
+                (lambdaConstructs as any)[key] = databaseLambda;
                 this.cluster.grantDataApiAccess(databaseLambda);
 
                 const lambdaIntegration = new HttpLambdaIntegration(
@@ -173,7 +184,8 @@ export class MigratedDatabase extends Construct {
             });
             return {
                 name: apiProps.name,
-                url: httpApi.apiEndpoint
+                url: httpApi.apiEndpoint,
+                lambdaConstructs: lambdaConstructs
             };
         }
 

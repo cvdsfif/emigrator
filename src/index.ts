@@ -1,5 +1,6 @@
+import { IQueryInterface } from "pepelaz-db";
 import { CdkMigratorHandler } from "./cdk-migrator-handler";
-import { ICdkMigratorHandler, IMigrationRunner, IMigrator, IQueryInterface } from "./migration-interfaces";
+import { ICdkMigratorHandler, IMigrationRunner, IMigrator } from "./migration-interfaces";
 import { Migrator } from "./migrator";
 import PostgresRunner from "./postgres-runner";
 
@@ -15,15 +16,13 @@ export const createMigratorHandler = (): ICdkMigratorHandler => {
     return new CdkMigratorHandler();
 }
 
-export { IMigrator, IQueryInterface } from "./migration-interfaces";
+export { IMigrator } from "./migration-interfaces";
 export { IMigrationRunner, MigrationResult, Migration, MigrationError, ICdkMigratorHandler } from "./migration-interfaces";
 export { listDatabaseChanges } from "./list-database-changes";
-export {
-    typedFacade, ITypedFacade
-} from "./typed-facade";
 export { databaseChange, DatabaseChangeRecord } from "./database-change";
 export {
-    db, MultistackProps, migratedDatabaseDefaultProps,
+    MultistackProps, migratedDatabaseDefaultProps,
     IMigratedDatabaseProps, MigratedDatabase, ILambdaProps, defaultLambdaProps,
+    ApiLambdaProps, IApiProps
 } from "./migrated-database-construct";
-export { setConnectionTimeouts, ReportedEvent, HandlerProps, interfaceHandler } from "./lambda-utils";
+

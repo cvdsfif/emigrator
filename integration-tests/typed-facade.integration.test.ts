@@ -1,7 +1,8 @@
-import { IMigrationRunner, ITypedFacade, createEmigrator, createPostgresRunner, typedFacade } from "../src";
+import { IMigrationRunner, createEmigrator, createPostgresRunner } from "../src";
 import { bigIntField, booleanField, dateField, fieldObject, integerField, notNull, stringField } from "pepelaz";
 import PostgresRunner from "../src/postgres-runner";
 import { IConnectedTestInterface, getConnectedPostgresInterface } from "../src/postgres-test-interface";
+import { ITypedFacade, typedFacade } from "pepelaz-db";
 
 describe("Testing database-related features of typed facade", () => {
     jest.setTimeout(60000);
@@ -25,7 +26,7 @@ describe("Testing database-related features of typed facade", () => {
             .migration({
                 order: 1,
                 query: `CREATE TABLE ${TEST_TABLE}
-                    (id BIGINT, some_value VARCHAR, num_field Numeric(16,2), 
+                    (id BIGINT PRIMARY KEY, some_value VARCHAR, num_field Numeric(16,2), 
                     int_field Numeric(16,2), date_field TIMESTAMPTZ, is_cool BOOLEAN DEFAULT TRUE)`,
                 description: "Test table created"
             })
@@ -58,6 +59,25 @@ describe("Testing database-related features of typed facade", () => {
         expect(results.records[1].id).toEqual(2n);
         expect(results.records[0].someValue).toEqual("txt");
         expect(results.records[1].someValue).toEqual("pwd");
+    });
+
+    test("Should correctly proceed to multiple upserts", async () => {
+        const records = [
+            { id: 1n, someValue: "txt" },
+            { id: 2n, someValue: "pwd" }
+        ];
+        const records2 = [
+            { id: 1n, someValue: "txt2" },
+            { id: 2n, someValue: "pwd2" }
+        ];
+        await facade.multiUpsert(input, TEST_TABLE, records, ["id"]);
+        await new Promise(res => setTimeout(res, 500));
+        await facade.multiUpsert(input, TEST_TABLE, records2, ["id"]);
+        const results = await facade.typedQuery(input, `SELECT id,some_value from ${TEST_TABLE}`);
+        expect(results.records[0].id).toEqual(1n);
+        expect(results.records[1].id).toEqual(2n);
+        expect(results.records[0].someValue).toEqual("txt2");
+        expect(results.records[1].someValue).toEqual("pwd2");
     });
 
     test("Should correctly insert and retake bigints", async () => {
@@ -124,5 +144,25 @@ describe("Testing database-related features of typed facade", () => {
         await facade.multiInsert(input, TEST_TABLE, record);
         const results = (await facade.select(input, TEST_TABLE));
         expect(results[0].isCool).toBeFalsy();
+    });
+
+    test("Should correctly accept date fields with current server date value", async () => {
+        const hugeValue = 1000000000000001n;
+        const stopizot = 100500n;
+        const datushka = new Date(0);
+        const record = [{ id: hugeValue, someValue: "gig", numField: stopizot, dateField: datushka }];
+        await facade.multiInsert(input, TEST_TABLE, record);
+        const results = (await facade.query(`SELECT id FROM ${TEST_TABLE} WHERE date_field BETWEEN now() - INTERVAL '1 minute' AND now()`));
+        expect(results.records[0].id).toEqual(hugeValue.toString());
+    });
+
+    test("Should accept null date fields with current server date value", async () => {
+        const hugeValue = 1000000000000001n;
+        const stopizot = 100500n;
+        const datushka = null;
+        const record = [{ id: hugeValue, someValue: "gig", numField: stopizot, dateField: datushka }];
+        await facade.multiInsert(input, TEST_TABLE, record);
+        const results = (await facade.query(`SELECT id FROM ${TEST_TABLE} WHERE date_field IS NULL`));
+        expect(results.records[0].id).toEqual(hugeValue.toString());
     });
 })

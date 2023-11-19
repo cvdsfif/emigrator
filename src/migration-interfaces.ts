@@ -1,14 +1,11 @@
 import { CdkCustomResourceEvent, CdkCustomResourceResponse } from "aws-lambda";
+import { IQueryInterface } from "pepelaz-db";
 
 export interface Migration {
     order: number;
     description: string;
     query: string;
     version?: number;
-}
-
-export interface IQueryInterface {
-    query(request: string, queryObject?: any): Promise<{ records: any[] }>;
 }
 
 export interface MigrationResult {

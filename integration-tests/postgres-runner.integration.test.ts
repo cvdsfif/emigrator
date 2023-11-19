@@ -30,7 +30,7 @@ describe("Testing migration on a real PostgreSQL database instance", () => {
 
     test("Empty migration should pass", async () => await createEmigrator().migrate(runner));
 
-    test("Successful migration should pass, it should be reported and the table should be visible", async () => {
+    test("Successful migration should pass, it should be reported and the table should be visible, non-existent tables should not show", async () => {
         await createEmigrator()
             .migration({
                 order: 1,
@@ -43,6 +43,7 @@ describe("Testing migration on a real PostgreSQL database instance", () => {
                 `SELECT * FROM ${PostgresRunner.MIGRATION_TABLE} WHERE creation_order=1`)).records[0]
         ).toStrictEqual(expect.objectContaining({ successful: true }));
         connectedInterface.expectTableExists(TEST_TABLE);
+        connectedInterface.expectTableExists("wrong_table", false);
     });
 
     test("Failed migration should correctly report failure and stop execution", async () => {

@@ -1,10 +1,10 @@
 import { PostgreSqlContainer, StartedPostgreSqlContainer } from "@testcontainers/postgresql";
+import { IQueryInterface } from "pepelaz-db";
 import { Client } from "pg";
-import { IQueryInterface } from "./migration-interfaces";
 
 export interface IConnectedTestInterface extends IQueryInterface {
     disconnect(): void;
-    expectTableExists(tableName: string): void;
+    expectTableExists(tableName: string, shouldExist?: boolean): void;
 }
 
 // This class has to be a singleton, we'll not initialize two instances of database for tests :)
@@ -50,8 +50,11 @@ class PostgresTester implements IConnectedTestInterface {
         return { records: (await this.connectedClient.query(...this.convertNamedParamerersToNumbered(request, queryObject))).rows }
     }
 
-    async expectTableExists(tableName: string) {
-        expect((await this.query(`SELECT 'public.${tableName}'::regclass AS tab`)).records[0].tab).toBe(tableName);
+    async expectTableExists(tableName: string, shouldExist = true) {
+        if (shouldExist)
+            expect((await this.query(`SELECT 'public.${tableName}'::regclass AS tab`)).records[0].tab).toBe(tableName);
+        else
+            await expect(this.query(`SELECT 'public.${tableName}'::regclass AS tab`)).rejects.toThrow();
     }
 }
 
