@@ -10,8 +10,8 @@ import { Construct } from "constructs";
 import { IMigrator } from "./migration-interfaces";
 import { CorsHttpMethod, HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-alpha';
-import { ApiProps, DataInterfaceDefinition } from "pepelaz";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import { ApiDefinition } from "pepelaz";
 
 export interface MultistackProps extends StackProps {
     environment?: string
@@ -60,27 +60,30 @@ export const migratedDatabaseDefaultProps:
     }
 }
 
-export type LambdaMap<T extends DataInterfaceDefinition> = {
+export type LambdaMap<T extends ApiDefinition> = {
     [key in keyof T]?: NodejsFunction
 };
-export interface IApiInformation<T extends DataInterfaceDefinition> {
+export interface IApiInformation<T extends ApiDefinition> {
     name: string,
     url: string,
     lambdaConstructs: LambdaMap<T>;
 }
 
-export type ApiLambdaProps<T extends DataInterfaceDefinition> = {
+export type ApiLambdaProps<T extends ApiDefinition> = {
     [K in keyof T]?: ILambdaProps;
 }
 
-export interface IApiProps extends ApiProps {
-    description: string
+export interface IApiProps<T extends ApiDefinition> {
+    name: string,
+    description: string,
+    definition: T,
+    props: ApiLambdaProps<T>
 }
 
 export class MigratedDatabase extends Construct {
     readonly versionedLayerFromPackage: (packageName: string) => lambda.LayerVersion;
     readonly createLambda: (functionName: string, extraProps: ILambdaProps) => nodejs.NodejsFunction;
-    readonly defineApi: <T extends DataInterfaceDefinition>(props: IApiProps, lambdaProps: ApiLambdaProps<T>) => IApiInformation<T>;
+    readonly defineApi: <T extends ApiDefinition>(props: IApiProps<T>) => IApiInformation<T>;
 
     readonly cluster: rds.ServerlessCluster;
     readonly awsSdkLayer: lambda.LayerVersion;
@@ -156,7 +159,7 @@ export class MigratedDatabase extends Construct {
                         `${functionName} (${props?.environment})`
                 });
 
-        this.defineApi = <T extends DataInterfaceDefinition>(apiProps: IApiProps, lambdaProps: ApiLambdaProps<T>) => {
+        this.defineApi = <T extends ApiDefinition>(apiProps: IApiProps<T>) => {
             const httpApi = new HttpApi(this, `ProxyCorsHttpApi-${apiProps.name}-${props?.environment}`, {
                 corsPreflight: { allowMethods: [CorsHttpMethod.ANY], allowOrigins: ['*'], allowHeaders: ['*'] },
             });
@@ -164,7 +167,7 @@ export class MigratedDatabase extends Construct {
             const lambdaConstructs: LambdaMap<T> = {};
             Object.keys(apiProps.definition).forEach(key => {
                 const keyWithDashes = key.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`);
-                const databaseLambda = this.createLambda(`${keyWithDashes}-lambda`, lambdaProps[key] ?? {
+                const databaseLambda = this.createLambda(`${keyWithDashes}-lambda`, apiProps.props[key] ?? {
                     ...defaultLambdaProps,
                     description: `${apiProps.description} : ${key}`,
                 });
