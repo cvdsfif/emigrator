@@ -167,10 +167,15 @@ export class MigratedDatabase extends Construct {
             const lambdaConstructs: LambdaMap<T> = {};
             Object.keys(apiProps.definition).forEach(key => {
                 const keyWithDashes = key.replace(/[A-Z]/g, match => `-${match.toLowerCase()}`);
-                const databaseLambda = this.createLambda(`${keyWithDashes}-lambda`, apiProps.props[key] ?? {
-                    ...defaultLambdaProps,
-                    description: `${apiProps.description} : ${key}`,
-                });
+                const databaseLambda = this.createLambda(
+                    `${keyWithDashes}-lambda`,
+                    apiProps.props[key] ? {
+                        ...apiProps.props[key] as ILambdaProps,
+                        description: `${apiProps.description} : ${apiProps.props[key]?.description ?? key}`
+                    } : {
+                        ...defaultLambdaProps,
+                        description: `${apiProps.description} : ${key}`,
+                    });
                 (lambdaConstructs as any)[key] = databaseLambda;
                 this.cluster.grantDataApiAccess(databaseLambda);
 
