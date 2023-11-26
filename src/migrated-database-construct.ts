@@ -173,7 +173,8 @@ export class MigratedDatabase extends Construct {
                     `${keyWithDashes}-lambda`,
                     apiProps.props[key] ? {
                         ...apiProps.props[key] as ILambdaProps,
-                        description: `${apiProps.description} : ${apiProps.props[key]?.description ?? key}`
+                        description: `${apiProps.description} : ${apiProps.props[key]?.description ?? key}`,
+                        directoryPrefix: apiProps.props[key]?.directoryPrefix ?? apiProps.defaultDirectoryPrefix
                     } : {
                         ...defaultLambdaProps,
                         description: `${apiProps.description} : ${key}`,
