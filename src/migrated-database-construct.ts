@@ -22,6 +22,7 @@ export type Environment = {
 }
 export interface ILambdaProps {
     description?: string,
+    directoryPrefix?: string,
     extraModules: string[],
     extraLayers: lambda.LayerVersion[],
     extraEnv: Environment
@@ -122,9 +123,9 @@ export class MigratedDatabase extends Construct {
 
         this.createLambda =
             (functionName: string, extraProps: ILambdaProps) =>
-                new nodejs.NodejsFunction(this, `${functionName}-${props?.environment}`, {
+                new nodejs.NodejsFunction(this, `${extraProps.directoryPrefix?.replace("/", "-") ?? ""}${functionName}-${props?.environment}`, {
                     runtime: lambda.Runtime.NODEJS_18_X,
-                    entry: `./${functionName}/index.ts`,
+                    entry: `./${extraProps.directoryPrefix ?? ""}${functionName}/index.ts`,
                     handler: 'handler',
                     timeout: Duration.seconds(300),
                     logRetention: RetentionDays.FIVE_DAYS,
