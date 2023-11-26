@@ -78,6 +78,7 @@ export interface IApiProps<T extends ApiDefinition> {
     name: string,
     description: string,
     definition: T,
+    defaultDirectoryPrefix?: string,
     props: ApiLambdaProps<T>
 }
 
@@ -176,6 +177,7 @@ export class MigratedDatabase extends Construct {
                     } : {
                         ...defaultLambdaProps,
                         description: `${apiProps.description} : ${key}`,
+                        directoryPrefix: apiProps.defaultDirectoryPrefix
                     });
                 (lambdaConstructs as any)[key] = databaseLambda;
                 this.cluster.grantDataApiAccess(databaseLambda);
