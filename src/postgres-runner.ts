@@ -58,9 +58,8 @@ export default class PostgresRunner extends MigrationRunner {
     }
 
     async initialiseMigrationTable(): Promise<void> {
-        await this.db.query(`DROP TABLE IF EXISTS ${PostgresRunner.MIGRATION_TABLE}`);
         await this.db.query(`
-            CREATE TABLE ${PostgresRunner.MIGRATION_TABLE}(
+            CREATE TABLE IF NOT EXISTS ${PostgresRunner.MIGRATION_TABLE}(
                 creation_order bigint primary key,
                 description varchar(255),
                 run_ts timestamptz not null,

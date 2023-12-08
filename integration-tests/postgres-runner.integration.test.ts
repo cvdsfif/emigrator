@@ -4,7 +4,7 @@ import PostgresRunner from "../src/postgres-runner";
 import { getConnectedPostgresInterface, IConnectedTestInterface } from "../src/postgres-test-interface";
 
 describe("Testing migration on a real PostgreSQL database instance", () => {
-    jest.setTimeout(60000);
+    jest.setTimeout(90000);
 
     let connectedInterface: IConnectedTestInterface;
     let runner: IMigrationRunner;

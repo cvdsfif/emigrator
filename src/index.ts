@@ -20,9 +20,6 @@ export { IMigrator } from "./migration-interfaces";
 export { IMigrationRunner, MigrationResult, Migration, MigrationError, ICdkMigratorHandler } from "./migration-interfaces";
 export { listDatabaseChanges } from "./list-database-changes";
 export { databaseChange, DatabaseChangeRecord } from "./database-change";
-export {
-    MultistackProps, migratedDatabaseDefaultProps,
-    IMigratedDatabaseProps, MigratedDatabase, ILambdaProps, defaultLambdaProps,
-    ApiLambdaProps, IApiProps
-} from "./migrated-database-construct";
+export * from "./migrated-database-construct";
+export { IntegrationHandler } from "./integration-handler";
 

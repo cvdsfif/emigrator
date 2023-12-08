@@ -21,7 +21,7 @@ class PostgresTester implements IConnectedTestInterface {
 
     static async getConnectedInstance(): Promise<IConnectedTestInterface> {
         if (!this.connectedInstance) {
-            const postgresContainer = await new PostgreSqlContainer().start();
+            const postgresContainer = await new PostgreSqlContainer().withReuse().start();
             const connectedClient = new Client({ connectionString: postgresContainer.getConnectionUri() });
             await connectedClient.connect();
             this.connectedInstance = new PostgresTester(postgresContainer, connectedClient);
@@ -31,7 +31,7 @@ class PostgresTester implements IConnectedTestInterface {
 
     async disconnect() {
         await PostgresTester.connectedInstance?.connectedClient.end();
-        await PostgresTester.connectedInstance?.postgresContainer.stop();
+        //await PostgresTester.connectedInstance?.postgresContainer.stop();
         PostgresTester.connectedInstance = null;
     }
 

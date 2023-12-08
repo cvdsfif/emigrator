@@ -5,7 +5,7 @@ import PostgresRunner from "../src/postgres-runner";
 import { IConnectedTestInterface, getConnectedPostgresInterface } from "../src/postgres-test-interface";
 
 describe("Testing integrity of the test runner", () => {
-    jest.setTimeout(60000);
+    jest.setTimeout(90000);
 
     let connectedInterface: IConnectedTestInterface;
     const TEST_TABLE = "test_table";

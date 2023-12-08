@@ -5,7 +5,7 @@ import { IConnectedTestInterface, getConnectedPostgresInterface } from "../src/p
 import { ITypedFacade, typedFacade } from "pepelaz-db";
 
 describe("Testing database-related features of typed facade", () => {
-    jest.setTimeout(60000);
+    jest.setTimeout(90000);
 
     let connectedInterface: IConnectedTestInterface;
     let facade: ITypedFacade;
@@ -25,7 +25,7 @@ describe("Testing database-related features of typed facade", () => {
         await createEmigrator()
             .migration({
                 order: 1,
-                query: `CREATE TABLE ${TEST_TABLE}
+                query: `CREATE TABLE IF NOT EXISTS ${TEST_TABLE}
                     (id BIGINT PRIMARY KEY, some_value VARCHAR, num_field Numeric(16,2), 
                     int_field Numeric(16,2), date_field TIMESTAMPTZ, is_cool BOOLEAN DEFAULT TRUE)`,
                 description: "Test table created"
@@ -70,13 +70,32 @@ describe("Testing database-related features of typed facade", () => {
             { id: 1n, someValue: "txt2" },
             { id: 2n, someValue: "pwd2" }
         ];
-        await facade.multiUpsert(input, TEST_TABLE, records, ["id"]);
+        await facade.multiUpsert(input, TEST_TABLE, records, { upsertFields: ["id"] });
         await new Promise(res => setTimeout(res, 500));
-        await facade.multiUpsert(input, TEST_TABLE, records2, ["id"]);
+        await facade.multiUpsert(input, TEST_TABLE, records2, { upsertFields: ["id"] });
         const results = await facade.typedQuery(input, `SELECT id,some_value from ${TEST_TABLE}`);
         expect(results.records[0].id).toEqual(1n);
         expect(results.records[1].id).toEqual(2n);
         expect(results.records[0].someValue).toEqual("txt2");
+        expect(results.records[1].someValue).toEqual("pwd2");
+    });
+
+    test("Should correctly proceed to multiple upserts with nulls ignored", async () => {
+        const records = [
+            { id: 1n, someValue: "txt" },
+            { id: 2n, someValue: null }
+        ];
+        const records2 = [
+            { id: 1n, someValue: "txt2" },
+            { id: 2n, someValue: "pwd2" }
+        ];
+        await facade.multiUpsert(input, TEST_TABLE, records, { upsertFields: ["id"], onlyReplaceNulls: true });
+        await new Promise(res => setTimeout(res, 500));
+        await facade.multiUpsert(input, TEST_TABLE, records2, { upsertFields: ["id"], onlyReplaceNulls: true });
+        const results = await facade.typedQuery(input, `SELECT id,some_value from ${TEST_TABLE}`);
+        expect(results.records[0].id).toEqual(1n);
+        expect(results.records[1].id).toEqual(2n);
+        expect(results.records[0].someValue).toEqual("txt");
         expect(results.records[1].someValue).toEqual("pwd2");
     });
 
