@@ -1,6 +1,6 @@
 {
   "name": "emigrator-ts",
-  "version": "5.0.0-beta.31",
+  "version": "5.0.0-beta.32",
   "description": "Extendable database migration library adapted to CDK projects written in TypeScript",
   "main": "./dist/index.js",
   "exports": {
@@ -55,7 +55,7 @@
     "@types/aws-lambda": "^8.10.121",
     "@types/jest": "^29.5.4",
     "@types/pg": "^8.10.2",
-    "aws-cdk-lib": "^2.99.0",
+    "aws-cdk-lib": "^2.114.1",
     "aws-lambda": "^1.0.7",
     "constructs": "^10.2.70",
     "crypto": "^1.0.1",
