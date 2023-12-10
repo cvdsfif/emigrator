@@ -1,6 +1,6 @@
 {
   "name": "emigrator-ts",
-  "version": "5.0.0-beta.27",
+  "version": "5.0.0-beta.28",
   "description": "Extendable database migration library adapted to CDK projects written in TypeScript",
   "main": "./dist/index.js",
   "exports": {
