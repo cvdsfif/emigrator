@@ -2,15 +2,17 @@ import { IQueryInterface } from "pepelaz-db";
 import { Migration, MigrationError, MigrationResult, MigrationRunner } from "./migration-interfaces";
 
 export default class PostgresRunner extends MigrationRunner {
-    constructor(db: IQueryInterface) {
+    constructor(db: IQueryInterface, private readonly migrationTableName = "migration_log") {
         super(db);
     }
 
-    static readonly MIGRATION_TABLE = "migration_log";
+    get migrationTable() {
+        return this.migrationTableName;
+    }
 
     async getFirstToMigrate(): Promise<number> {
         const results = await this.db.query(`
-            SELECT MAX(creation_order) AS maxorder FROM ${PostgresRunner.MIGRATION_TABLE}
+            SELECT MAX(creation_order) AS maxorder FROM ${this.migrationTableName}
         `);
         return parseInt(results.records[0].maxorder ?? 0);
     }
@@ -34,7 +36,7 @@ export default class PostgresRunner extends MigrationRunner {
     async migrationFailed(err: MigrationError): Promise<void> {
         await this.db.query(
             `
-                INSERT INTO ${PostgresRunner.MIGRATION_TABLE}(creation_order,description,run_ts,query_executed,successful,message)
+                INSERT INTO ${this.migrationTableName}(creation_order,description,run_ts,query_executed,successful,message)
                 VALUES(:creationOrder,:description,now(),:queryExecuted,FALSE,:message)
             `, {
             creationOrder: err.migration.order,
@@ -47,7 +49,7 @@ export default class PostgresRunner extends MigrationRunner {
     async migrationSuccessful(migration: Migration, duration: number): Promise<void> {
         await this.db.query(
             `
-                INSERT INTO ${PostgresRunner.MIGRATION_TABLE}(creation_order,description,run_ts,query_executed,successful,message)
+                INSERT INTO ${this.migrationTableName}(creation_order,description,run_ts,query_executed,successful,message)
                 VALUES(:creationOrder,:description,now(),:queryExecuted,TRUE,:message)
             `, {
             creationOrder: migration.order,
@@ -59,7 +61,7 @@ export default class PostgresRunner extends MigrationRunner {
 
     async initialiseMigrationTable(): Promise<void> {
         await this.db.query(`
-            CREATE TABLE IF NOT EXISTS ${PostgresRunner.MIGRATION_TABLE}(
+            CREATE TABLE IF NOT EXISTS ${this.migrationTableName}(
                 creation_order bigint primary key,
                 description varchar(255),
                 run_ts timestamptz not null,
@@ -70,7 +72,7 @@ export default class PostgresRunner extends MigrationRunner {
         `);
     }
     async cleanupFailedMigrationsReports(): Promise<void> {
-        await this.db.query(`DELETE FROM ${PostgresRunner.MIGRATION_TABLE} WHERE NOT successful`);
+        await this.db.query(`DELETE FROM ${this.migrationTableName} WHERE NOT successful`);
     }
 
 }

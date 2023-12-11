@@ -23,6 +23,8 @@ class MigrationRunnerStub extends MigrationRunner {
         this.lastMigration = lastMigration;
     }
 
+    get migrationTable() { return "migration_stub"; }
+
     getFirstToMigrate(): Promise<number> {
         return this.lastMigration;
     }

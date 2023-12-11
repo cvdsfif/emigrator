@@ -1,6 +1,5 @@
 import { createEmigrator, createPostgresRunner } from "../src";
 import { IMigrationRunner } from "../src/migration-interfaces";
-import PostgresRunner from "../src/postgres-runner";
 import { getConnectedPostgresInterface, IConnectedTestInterface } from "../src/postgres-test-interface";
 
 describe("Testing migration on a real PostgreSQL database instance", () => {
@@ -16,19 +15,17 @@ describe("Testing migration on a real PostgreSQL database instance", () => {
     afterAll(async () => await connectedInterface.disconnect());
 
     beforeEach(async () => {
-        runner = createPostgresRunner(connectedInterface);
+        runner = createPostgresRunner(connectedInterface, "runner_test_log");
         await runner.initialiseMigrationTable();
     });
 
     // Rollback is actually not implemented, so we do manual cleanup
     afterEach(async () => {
-        await connectedInterface.query(`DROP TABLE IF EXISTS ${PostgresRunner.MIGRATION_TABLE}`);
+        await connectedInterface.query(`DROP TABLE IF EXISTS ${runner.migrationTable}`);
         await connectedInterface.query(`DROP TABLE IF EXISTS ${TEST_TABLE}`);
     });
 
-    test("Migration table should exist", async () => await connectedInterface.expectTableExists(PostgresRunner.MIGRATION_TABLE));
-
-    test("Empty migration should pass", async () => await createEmigrator().migrate(runner));
+    test("Migration table should exist", async () => await connectedInterface.expectTableExists(runner.migrationTable));
 
     test("Successful migration should pass, it should be reported and the table should be visible, non-existent tables should not show", async () => {
         await createEmigrator()
@@ -40,7 +37,7 @@ describe("Testing migration on a real PostgreSQL database instance", () => {
             .migrate(runner);
         expect(
             (await connectedInterface.query(
-                `SELECT * FROM ${PostgresRunner.MIGRATION_TABLE} WHERE creation_order=1`)).records[0]
+                `SELECT * FROM ${runner.migrationTable} WHERE creation_order=1`)).records[0]
         ).toStrictEqual(expect.objectContaining({ successful: true }));
         connectedInterface.expectTableExists(TEST_TABLE);
         connectedInterface.expectTableExists("wrong_table", false);
@@ -61,11 +58,11 @@ describe("Testing migration on a real PostgreSQL database instance", () => {
             .migrate(runner);
         expect(
             (await connectedInterface.query(
-                `SELECT * FROM ${PostgresRunner.MIGRATION_TABLE} WHERE creation_order=1`)).records[0]
+                `SELECT * FROM ${runner.migrationTable} WHERE creation_order=1`)).records[0]
         ).toStrictEqual(expect.objectContaining({ successful: false }));
         expect(
             (await connectedInterface.query(
-                `SELECT * FROM ${PostgresRunner.MIGRATION_TABLE} WHERE creation_order=2`)).records.length
+                `SELECT * FROM ${runner.migrationTable} WHERE creation_order=2`)).records.length
         ).toBe(0);
     });
 

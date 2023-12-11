@@ -1,7 +1,7 @@
 import { App, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { integerField, stringField } from "pepelaz";
-import { MigratedDatabase, MultistackProps, createEmigrator, migratedDatabaseDefaultProps } from "../src";
+import { MigratedDatabase, MultistackProps, createEmigrator, defaultLambdaProps, migratedDatabaseDefaultProps } from "../src";
 import { Match, Template } from "aws-cdk-lib/assertions";
 
 describe("Test the correct migrated constructs building", () => {
@@ -16,8 +16,8 @@ describe("Test the correct migrated constructs building", () => {
                 ...migratedDatabaseDefaultProps,
                 databaseName: "TestName",
                 migration: createEmigrator(),
-                migrationLayerPath: "tests/layers",
-                migrationLambdaPath: "tests/"
+                commonLayerPath: "tests/layers",
+                migrationLayerPath: "migration"
             })
         }
     }
@@ -30,27 +30,7 @@ describe("Test the correct migrated constructs building", () => {
         stack = new TestedStack(app, "TestedStack", { environment: "test" });
     });
 
-    test("Should create an HTTP API connected to an interface", () => {
-        const api = {
-            callFunc: { arg: integerField(), ret: stringField() }
-        }
-
-        stack.migratedDatabase.defineApi({
-            name: "TestApi",
-            description: "Test API",
-            definition: api,
-            defaultDirectoryPrefix: "tests/",
-            props: {}
-        });
-
-        const template = Template.fromStack(stack);
-        template.hasResourceProperties("AWS::ApiGatewayV2::Api", {
-            "Name": "ProxyCorsHttpApi-TestApi-test",
-            "CorsConfiguration": { "AllowMethods": ["*"], "AllowOrigins": ['*'], "AllowHeaders": ['*'] }
-        });
-    });
-
-    test("Should create an HTTP API connected to an inline layer interface and related AWS objects", () => {
+    test("Should create an HTTP API connected to an inline layer interface and related AWS objects with extra lambda description", () => {
         const api = {
             callFunc: { arg: integerField(), ret: stringField() }
         }
@@ -59,9 +39,17 @@ describe("Test the correct migrated constructs building", () => {
             testApi: {
                 cfnAlias: "TestApi",
                 description: "Test API",
-                props: {}
+                props: {
+                    callFunc: {
+                        ...defaultLambdaProps,
+                        description: "Extra description"
+                    }
+                }
             }
-        }, { layerPath: "tests/layers", outDir: "tests/dist" });
+        }, {
+            layerPath: "tests/layers",
+            outDir: "tests/dist",
+        });
 
         const template = Template.fromStack(stack);
         template.hasResourceProperties("AWS::ApiGatewayV2::Api", {
@@ -73,8 +61,80 @@ describe("Test the correct migrated constructs building", () => {
         });
         template.hasResourceProperties("AWS::Lambda::Function",
             Match.objectLike({
-                "Description": Match.stringLikeRegexp("Test API"),
+                "Description": Match.stringLikeRegexp("Extra description"),
                 "Layers": Match.arrayWith([{ "Ref": Match.stringLikeRegexp("TestApi") }])
+            })
+        );
+    });
+
+    test("Should create an HTTP API connected to an inline layer without extra lambda description and specific paths", () => {
+        const api = {
+            callFunc: { arg: integerField(), ret: stringField() }
+        }
+
+        stack.migratedDatabase.connectLayerApis({ testApi: api }, {
+            testApi: {
+                cfnAlias: "TestApi",
+                description: "Test API",
+            }
+        });
+
+        const template = Template.fromStack(stack);
+        template.hasResourceProperties("AWS::ApiGatewayV2::Api", {
+            "Name": "ProxyCorsHttpApi-TestApi-test",
+            "CorsConfiguration": { "AllowMethods": ["*"], "AllowOrigins": ['*'], "AllowHeaders": ['*'] }
+        });
+        template.hasResourceProperties("AWS::Lambda::LayerVersion", {
+            "CompatibleRuntimes": [stack.migratedDatabase.defaultRuntime]
+        });
+        template.hasResourceProperties("AWS::Lambda::Function",
+            Match.objectLike({
+                "Description": Match.stringLikeRegexp("callFunc"),
+                "Layers": Match.arrayWith([{ "Ref": Match.stringLikeRegexp("TestApi") }])
+            })
+        );
+    });
+
+    test("Should create an HTTP API connected to an inline layer without any description and specific paths", () => {
+        const api = {
+            callFunc: { arg: integerField(), ret: stringField() }
+        }
+
+        stack.migratedDatabase.connectLayerApis({ testApi: api }, {
+            testApi: {
+                cfnAlias: "TestApi",
+                props: {
+                    callFunc: {
+                        ...defaultLambdaProps
+                    }
+                }
+            }
+        });
+
+        const template = Template.fromStack(stack);
+        template.hasResourceProperties("AWS::ApiGatewayV2::Api", {
+            "Name": "ProxyCorsHttpApi-TestApi-test",
+            "CorsConfiguration": { "AllowMethods": ["*"], "AllowOrigins": ['*'], "AllowHeaders": ['*'] }
+        });
+        template.hasResourceProperties("AWS::Lambda::LayerVersion", {
+            "CompatibleRuntimes": [stack.migratedDatabase.defaultRuntime]
+        });
+        template.hasResourceProperties("AWS::Lambda::Function",
+            Match.objectLike({
+                "Description": Match.stringLikeRegexp("callFunc"),
+                "Layers": Match.arrayWith([{ "Ref": Match.stringLikeRegexp("TestApi") }])
+            })
+        );
+    });
+
+    test("Should connect an inline lambda function without any description", () => {
+        stack.migratedDatabase.createInlineLambda("surs", "export.handler=async()=>{}", { ...defaultLambdaProps });
+
+        const template = Template.fromStack(stack);
+        template.hasResourceProperties("AWS::Lambda::Function",
+            Match.objectLike({
+                "Description": Match.stringLikeRegexp("surs"),
+                "Layers": Match.arrayWith([{ "Ref": Match.stringLikeRegexp("ApiLibraries") }])
             })
         );
     });

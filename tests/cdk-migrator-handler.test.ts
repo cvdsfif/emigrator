@@ -19,6 +19,8 @@ describe("Testing the custom CDK DB migration resource handler", () => {
             super({ query: (request: string) => Promise.resolve({ records: [] }) });
         }
 
+        get migrationTable() { return "cdk_migration_test"; }
+
         getFirstToMigrate = jest.fn();
 
         cleanupFailedMigrationsReports(): Promise<void> {

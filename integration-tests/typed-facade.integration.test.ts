@@ -19,8 +19,10 @@ describe("Testing database-related features of typed facade", () => {
 
     afterAll(async () => await connectedInterface.disconnect());
 
+    let runner: IMigrationRunner;
+
     beforeEach(async () => {
-        const runner: IMigrationRunner = createPostgresRunner(connectedInterface);
+        runner = createPostgresRunner(connectedInterface, "test_migration_log");
         await runner.initialiseMigrationTable();
         await createEmigrator()
             .migration({
@@ -44,7 +46,7 @@ describe("Testing database-related features of typed facade", () => {
 
     // Rollback is actually not implemented, so we do manual cleanup
     afterEach(async () => {
-        await connectedInterface.query(`DROP TABLE IF EXISTS ${PostgresRunner.MIGRATION_TABLE}`);
+        await connectedInterface.query(`DROP TABLE IF EXISTS ${runner.migrationTable}`);
         await connectedInterface.query(`DROP TABLE IF EXISTS ${TEST_TABLE}`);
     });
 

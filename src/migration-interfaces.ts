@@ -40,6 +40,7 @@ export interface IMigrationRunner {
     migrationSuccessful(migration: Migration, duration: number): Promise<void>;
     initialiseMigrationTable(): Promise<void>;
     cleanupFailedMigrationsReports(): Promise<void>;
+    get migrationTable(): string;
 }
 
 export abstract class MigrationRunner implements IMigrationRunner {
@@ -55,4 +56,5 @@ export abstract class MigrationRunner implements IMigrationRunner {
     abstract migrationSuccessful(migration: Migration, duration: number): Promise<void>;
     abstract initialiseMigrationTable(): Promise<void>;
     abstract cleanupFailedMigrationsReports(): Promise<void>;
+    abstract get migrationTable(): string;
 }

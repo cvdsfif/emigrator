@@ -8,8 +8,8 @@ export const createEmigrator = (): IMigrator => {
     return new Migrator();
 }
 
-export const createPostgresRunner = (db: IQueryInterface): IMigrationRunner => {
-    return new PostgresRunner(db);
+export const createPostgresRunner = (db: IQueryInterface, migrationTable?: string): IMigrationRunner => {
+    return new PostgresRunner(db, migrationTable);
 }
 
 export const createMigratorHandler = (): ICdkMigratorHandler => {
@@ -18,8 +18,6 @@ export const createMigratorHandler = (): ICdkMigratorHandler => {
 
 export { IMigrator } from "./migration-interfaces";
 export { IMigrationRunner, MigrationResult, Migration, MigrationError, ICdkMigratorHandler } from "./migration-interfaces";
-export { listDatabaseChanges } from "./list-database-changes";
 export { databaseChange, DatabaseChangeRecord } from "./database-change";
 export * from "./migrated-database-construct";
-export { IntegrationHandler } from "./integration-handler";
 
