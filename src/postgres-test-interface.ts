@@ -11,11 +11,9 @@ export interface IConnectedTestInterface extends IQueryInterface {
 class PostgresTester implements IConnectedTestInterface {
     private static connectedInstance: PostgresTester | null = null;
 
-    private postgresContainer: StartedPostgreSqlContainer;
     private connectedClient: Client;
 
-    private constructor(postgresContainer: StartedPostgreSqlContainer, connectedClient: Client) {
-        this.postgresContainer = postgresContainer;
+    private constructor(connectedClient: Client) {
         this.connectedClient = connectedClient;
     }
 
@@ -24,14 +22,13 @@ class PostgresTester implements IConnectedTestInterface {
             const postgresContainer = await new PostgreSqlContainer().withReuse().start();
             const connectedClient = new Client({ connectionString: postgresContainer.getConnectionUri() });
             await connectedClient.connect();
-            this.connectedInstance = new PostgresTester(postgresContainer, connectedClient);
+            this.connectedInstance = new PostgresTester(connectedClient);
         }
         return this.connectedInstance!;
     }
 
     async disconnect() {
         await PostgresTester.connectedInstance?.connectedClient.end();
-        //await PostgresTester.connectedInstance?.postgresContainer.stop();
         PostgresTester.connectedInstance = null;
     }
 

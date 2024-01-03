@@ -27,19 +27,22 @@ export interface IMigratedDatabaseProps extends MultistackProps {
     commonLayerPath: string,
     migrationLambdaName: string,
     migrationLayerPath: string,
-    layerOutputDir: string
+    layerOutputDir: string,
+    vpcProps: ec2.VpcProps
 }
 
 export const migratedDatabaseDefaultProps:
     Pick<
         IMigratedDatabaseProps,
-        ("databaseClusterTimeout" | "migrationLayerPath" | "commonLayerPath" | "layerOutputDir" | "migrationLambdaName")
+        ("databaseClusterTimeout" | "migrationLayerPath" | "commonLayerPath" |
+            "layerOutputDir" | "migrationLambdaName" | "vpcProps")
     > = {
     databaseClusterTimeout: Duration.seconds(300),
     migrationLayerPath: 'migration',
     migrationLambdaName: 'migration-lambda',
     commonLayerPath: 'layers',
-    layerOutputDir: 'dist'
+    layerOutputDir: 'dist',
+    vpcProps: {}
 }
 
 export type LayerProps = {
@@ -85,11 +88,11 @@ export type LayerApiOutputsList<T extends LayerApisList> = {
 
 export class MigratedDatabase extends Construct {
     // Вefaults
-    private readonly DEFAULT_RUNTIME = lambda.Runtime.NODEJS_18_X;
-    private readonly DEFAULT_RUNTIME_ESBUILD = "node18.0";
+    private readonly DEFAULT_RUNTIME = lambda.Runtime.NODEJS_20_X;
+    private readonly DEFAULT_RUNTIME_ESBUILD = "node20.0";
     private readonly DEFAULT_LAMBDA_TIMEOUT = Duration.seconds(300);
     private readonly DEFAULT_LOG_RETENTION = RetentionDays.FIVE_DAYS;
-    private readonly DEFAULT_MEMORY_SIZE = 512;
+    private readonly DEFAULT_MEMORY_SIZE = 256;
     private readonly DEFAULT_ARCHITECTURE = Architecture.ARM_64;
 
     readonly versionedLayerFromPackage: (packageName: string, layerProps?: LayerProps) => lambda.LayerVersion;
@@ -103,18 +106,27 @@ export class MigratedDatabase extends Construct {
     readonly cluster: rds.ServerlessCluster;
     readonly emigratorTsLayer: lambda.LayerVersion;
     readonly apiLibrariesLayer: lambda.LayerVersion;
+    readonly vpc: ec2.Vpc;
 
     constructor(scope: Construct, id: string, props: IMigratedDatabaseProps) {
         super(scope, id);
 
-        const vpc = new ec2.Vpc(this, `${props.databaseName}VPC-${props?.environment}`, {
+        this.vpc = new ec2.Vpc(this, `${props.databaseName}VPC-${props?.environment}`, {
             natGateways: 1,
+            ...props.vpcProps
         });
-        this.cluster = new rds.ServerlessCluster(this, `${props.databaseName}PostgresCluster-${props?.environment}`, {
-            engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_10 }),
+
+        this.cluster = new rds.ServerlessCluster(this, `${props.databaseName}PostgresCluster15-${props?.environment}`, {
+            engine: rds.DatabaseClusterEngine.auroraPostgres({ version: rds.AuroraPostgresEngineVersion.VER_13_12 }),
             defaultDatabaseName: `${props.databaseName}`,
-            vpc: vpc,
-            scaling: { autoPause: props.databaseClusterTimeout } // Optional. If not set, then instance will pause after 5 minutes 
+            vpc: this.vpc,
+            backupRetention: Duration.days(3),
+            deletionProtection: true,
+            scaling: {
+                minCapacity: rds.AuroraCapacityUnit.ACU_2,
+                maxCapacity: rds.AuroraCapacityUnit.ACU_4,
+                autoPause: props.databaseClusterTimeout // Optional. If not set, then instance will pause after 5 minutes 
+            }
         });
 
         this.versionedLayerFromPackage = (packageName: string, layerProps: LayerProps = {}) => {
@@ -301,7 +313,7 @@ export class MigratedDatabase extends Construct {
             resourceType: "Custom::Migration",
             properties: {
                 lastMigration: props.migration.lastMigration(),
-                manualVersion: "20231210-2"
+                manualVersion: "20231211"
             }
         });
         customResource.node.addDependency(this.cluster);
